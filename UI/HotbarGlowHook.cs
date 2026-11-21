@@ -7,10 +7,6 @@ using ScholarHelper.Core;
 
 namespace ScholarHelper.UI;
 
-/// <summary>
-/// Thin native hotbar proc border hook. Performs an O(1) lookup against AlertEngine's
-/// per-frame cached highlight set (purely visual UI; sends zero actions or packets).
-/// </summary>
 public sealed unsafe class HotbarGlowHook : IDisposable
 {
     [UnmanagedFunctionPointer(CallingConvention.ThisCall)]

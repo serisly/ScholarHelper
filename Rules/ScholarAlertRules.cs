@@ -47,7 +47,6 @@ public static class ScholarAlertRules
 
     public static IReadOnlyList<AlertRule> CreateAll() =>
     [
-        // Party
         new RaiseTrackerRule(),
         new TankLowHpRule(),
         new EsunaRule(),
@@ -55,7 +54,6 @@ public static class ScholarAlertRules
         new FocusTargetRule(),
         new RaidFoodRule(),
 
-        // Cooldowns
         new LucidDreamingRule(),
         new BioDotRule(),
         new AetherflowRule(),
@@ -64,7 +62,6 @@ public static class ScholarAlertRules
         new FeyGaugeCapRule(),
         new RecitationRule(),
 
-        // Fairy
         new MissingFairyRule(),
         new FairyLeashRule(),
     ];
@@ -96,9 +93,6 @@ public static class ScholarAlertRules
         _ => false,
     };
 
-    // -------------------------------------------------------------------------
-    // Party
-    // -------------------------------------------------------------------------
     private sealed class RaiseTrackerRule : AlertRule
     {
         public override string Id => "raise_tracker";
@@ -149,7 +143,7 @@ public static class ScholarAlertRules
                     [
                         BannerSegment.Job(m.ClassJobId),
                         BannerSegment.Plain(m.Name, ColorWhite),
-                        BannerSegment.Plain("  —  Raise pending", ColorGold),
+                        BannerSegment.Plain(": Raise pending", ColorGold),
                     ]));
                 }
                 else
@@ -160,7 +154,7 @@ public static class ScholarAlertRules
                     [
                         BannerSegment.Job(m.ClassJobId),
                         BannerSegment.Plain(m.Name, ColorWhite),
-                        BannerSegment.Plain("  —  DEAD (needs Raise)", ColorCoral),
+                        BannerSegment.Plain(": DEAD (needs Raise)", ColorCoral),
                     ]));
                 }
             }
@@ -222,7 +216,7 @@ public static class ScholarAlertRules
                 [
                     BannerSegment.Job(m.ClassJobId),
                     BannerSegment.Plain(m.Name, ColorWhite),
-                    BannerSegment.Plain($"  —  {(int)MathF.Round(m.HpPercent)}% HP", ColorCoral),
+                    BannerSegment.Plain($": {(int)MathF.Round(m.HpPercent)}% HP", ColorCoral),
                 ]));
             }
 
@@ -402,9 +396,6 @@ public static class ScholarAlertRules
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Cooldowns
-    // -------------------------------------------------------------------------
     private sealed class LucidDreamingRule : AlertRule
     {
         public override string Id => "lucid";
@@ -545,7 +536,7 @@ public static class ScholarAlertRules
                             BannerSegment.Plain("Critlo on ", ColorGold),
                             BannerSegment.Job(m.ClassJobId),
                             BannerSegment.Plain(m.Name, ColorWhite),
-                            BannerSegment.Plain(" — Deploy ready", ColorGold),
+                            BannerSegment.Plain(" (Deploy ready)", ColorGold),
                         ]),
                         $"C:{m.EntityId}");
                 }
@@ -634,9 +625,6 @@ public static class ScholarAlertRules
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Fairy
-    // -------------------------------------------------------------------------
     private sealed class MissingFairyRule : AlertRule
     {
         public override string Id => "missing_fairy";
@@ -666,7 +654,7 @@ public static class ScholarAlertRules
 
             return AlertEvaluation.Active(
                 new HotbarGlowTarget(ActionType.Action, SummonEosActionId),
-                new AlertBannerLine(Id, 25, ColorAmber, [BannerSegment.Plain("Fairy missing — Summon Eos", ColorAmber)]));
+                new AlertBannerLine(Id, 25, ColorAmber, [BannerSegment.Plain("Fairy missing (Summon Eos)", ColorAmber)]));
         }
     }
 
@@ -701,7 +689,7 @@ public static class ScholarAlertRules
 
             return AlertEvaluation.Active(
                 new HotbarGlowTarget(ActionType.PetAction, HeelPetActionId),
-                new AlertBannerLine(Id, 28, ColorAmber, [BannerSegment.Plain($"Eos is {state.FairyDistanceYalms:F1}y away — Recall (Heel)", ColorAmber)]));
+                    new AlertBannerLine(Id, 28, ColorAmber, [BannerSegment.Plain($"Eos is {state.FairyDistanceYalms:F1}y away (Heel)", ColorAmber)]));
         }
     }
 }

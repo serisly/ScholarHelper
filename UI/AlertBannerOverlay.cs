@@ -8,9 +8,6 @@ using ScholarHelper.Core;
 
 namespace ScholarHelper.UI;
 
-/// <summary>
-/// Unified click-through banner stack rendering active alerts with party Class Job icons and names.
-/// </summary>
 public sealed class AlertBannerOverlay : Window
 {
     private const uint JobIconBaseId = 62100;

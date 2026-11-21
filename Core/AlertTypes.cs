@@ -89,7 +89,6 @@ public static class SoundEffects
         }
         catch
         {
-            // Ignore audio failures during teardown.
         }
     }
 }
@@ -164,7 +163,6 @@ public sealed unsafe class FrameState
     public IReadOnlyList<PartyMemberState> Party { get; init; } = Array.Empty<PartyMemberState>();
     public IReadOnlyList<ActiveMitigation> ActiveMitigations { get; init; } = Array.Empty<ActiveMitigation>();
 
-    // Valid only during the current Framework tick.
     public ActionManager* ActionManagerPtr { get; init; }
 
     public bool IsOffCooldown(uint actionId)
@@ -186,7 +184,6 @@ public abstract class AlertRule
     public abstract AlertRuleConfig CreateDefaultConfig();
     public abstract AlertEvaluation Evaluate(FrameState state, AlertRuleConfig cfg);
 
-    /// <summary>Draws compact inline controls in the Options column. Return true if cfg changed.</summary>
     public virtual bool DrawOptions(AlertRuleConfig cfg) => false;
 }
 

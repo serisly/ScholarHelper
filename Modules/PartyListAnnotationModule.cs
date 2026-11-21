@@ -7,9 +7,6 @@ using ScholarHelper.Core;
 
 namespace ScholarHelper.Modules;
 
-/// <summary>
-/// Opt-in inline badges drawn directly beside native _PartyList rows (alternative to floating banners).
-/// </summary>
 public sealed class PartyListAnnotationModule : IHelperModule
 {
     private const float EosWhisperingDawnRadius = 15f;

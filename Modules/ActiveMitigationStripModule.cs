@@ -8,10 +8,6 @@ using ScholarHelper.Core;
 
 namespace ScholarHelper.Modules;
 
-/// <summary>
-/// Compact horizontal icon strip showing active raid mitigations with remaining seconds.
-/// Automatically anchors beneath _PartyList unless dragged elsewhere via Move Overlays.
-/// </summary>
 public sealed class ActiveMitigationStripModule : IHelperModule
 {
     private static readonly Vector4 ColorBg = new(0.07f, 0.08f, 0.10f, 0.84f);

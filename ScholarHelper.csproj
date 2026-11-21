@@ -6,8 +6,8 @@
     <Author>Seris</Author>
     <Name>Scholar Helper</Name>
     <InternalName>ScholarHelper</InternalName>
-    <Punchline>Native hotbar glows, party/raise/HP alerts, raid mit strip, and AoE range tooltips.</Punchline>
-    <Description>Lightweight Scholar &amp; healer assistant for FFXIV (Dalamud API 15). Uses native hotbar proc borders, configurable screen banners, and built-in game sound chimes for cooldowns, raises, Esuna, low tank HP, and fairy management, plus AoE range hover tooltips, an active raid mitigation strip, and optional Party List inline badges.</Description>
+    <Punchline>Scholar cooldown glows and party alerts.</Punchline>
+    <Description>Personal FFXIV Scholar plugin for raiding. Uses the game's built-in hotbar proc glow for cooldowns and fairy reminders, plus simple party alerts and hover range tooltips.</Description>
     <RepoUrl>https://github.com/serisly/ScholarHelper</RepoUrl>
     <IconUrl>https://raw.githubusercontent.com/serisly/ScholarHelper/main/images/icon.png</IconUrl>
     <Tags>scholar;healer;hotbar;cooldown;utility</Tags>

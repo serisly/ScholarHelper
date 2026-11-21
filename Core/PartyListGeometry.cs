@@ -14,10 +14,6 @@ public readonly record struct PartyRowBounds(
     Vector2 Min,
     Vector2 Max);
 
-/// <summary>
-/// Read-only geometry reader for FFXIV's native _PartyList addon.
-/// Computes exact viewport-space row rectangles and the bottom anchor of visible party members.
-/// </summary>
 public static unsafe class PartyListGeometry
 {
     public static bool TryGetPartyBounds(

@@ -9,10 +9,6 @@ using ScholarHelper.Rules;
 
 namespace ScholarHelper.Modules;
 
-/// <summary>
-/// Contextual hover / target range tooltip.
-/// Completely hidden unless hovering an AoE / fairy / Deploy ability or targeting Eos/Seraph in-world.
-/// </summary>
 public sealed class AbilityRangeTooltipModule : IHelperModule
 {
     private enum RangeOrigin { Fairy, Self, DeployTarget }

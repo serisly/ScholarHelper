@@ -13,11 +13,6 @@ using ScholarHelper.Rules;
 
 namespace ScholarHelper.Core;
 
-/// <summary>
-/// Single-pass per-frame evaluator on IFramework.Update.
-/// Builds one FrameState snapshot shared by all AlertRules and IHelperModules,
-/// caches O(1) hotbar glow lookups, collects sorted banners, and triggers edge-gated audio chimes.
-/// </summary>
 public sealed unsafe class AlertEngine : IDisposable
 {
     private const uint WellFedStatusId = 48;
@@ -440,7 +435,6 @@ public sealed unsafe class AlertEngine : IDisposable
             return;
         }
 
-        // First pass: record anyone currently mid-cast raising a target
         foreach (var m in partyList)
         {
             if (m.GameObject is IBattleChara bc && bc.IsCasting && ScholarAlertRules.IsRaiseSpell(bc.CastActionId))
@@ -449,7 +443,6 @@ public sealed unsafe class AlertEngine : IDisposable
             }
         }
 
-        // Second pass: assemble immutable party member snapshots with pre-resolved raiser
         foreach (var m in partyList)
         {
             var jobRow = m.ClassJob.ValueNullable;

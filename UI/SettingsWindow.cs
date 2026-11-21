@@ -8,11 +8,6 @@ using ScholarHelper.Modules;
 
 namespace ScholarHelper.UI;
 
-/// <summary>
-/// Clean 2-tab Settings UI:
-/// - Alerts: compact aligned table (Alert | Glow | Banner | Sound | Options) with hover tooltips and live sound audition.
-/// - Overlays: Range Tooltip, Raid Mitigation Strip, and Party List Inline Badges.
-/// </summary>
 public sealed class SettingsWindow : Window
 {
     private static readonly Vector4 ColorMuted = new(0.64f, 0.67f, 0.72f, 1f);
@@ -165,7 +160,6 @@ public sealed class SettingsWindow : Window
             ImGui.PushID(rule.Id);
             ImGui.TableNextRow();
 
-            // Col 0: Enable + Name (tooltip on hover)
             ImGui.TableSetColumnIndex(0);
             var en = cfg.Enabled;
             if (ImGui.Checkbox("##en", ref en)) { cfg.Enabled = en; changed = true; }
@@ -180,7 +174,6 @@ public sealed class SettingsWindow : Window
 
             if (!cfg.Enabled) ImGui.BeginDisabled();
 
-            // Col 1: Glow
             ImGui.TableSetColumnIndex(1);
             if ((rule.Capabilities & AlertCapabilities.Glow) != 0)
             {
@@ -192,7 +185,6 @@ public sealed class SettingsWindow : Window
                 ImGui.TextColored(ColorMuted, "-");
             }
 
-            // Col 2: Banner
             ImGui.TableSetColumnIndex(2);
             if ((rule.Capabilities & AlertCapabilities.Banner) != 0)
             {
@@ -204,7 +196,6 @@ public sealed class SettingsWindow : Window
                 ImGui.TextColored(ColorMuted, "-");
             }
 
-            // Col 3: Sound + live preview dropdown
             ImGui.TableSetColumnIndex(3);
             if ((rule.Capabilities & AlertCapabilities.Sound) != 0)
             {
@@ -238,7 +229,6 @@ public sealed class SettingsWindow : Window
                 }
             }
 
-            // Col 4: Rule-specific compact inline options
             ImGui.TableSetColumnIndex(4);
             changed |= rule.DrawOptions(cfg);
 

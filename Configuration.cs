@@ -13,29 +13,24 @@ public sealed class Configuration : IPluginConfiguration
 
     public bool Enabled { get; set; } = true;
 
-    // Unified Alert Banner placement
     public bool HasCustomBannerPosition { get; set; } = false;
     public float BannerPosX { get; set; } = 0f;
     public float BannerPosY { get; set; } = 0f;
 
-    // Unified per-rule settings keyed by AlertRule.Id
     public Dictionary<string, AlertRuleConfig> RuleConfigs { get; set; } = new(StringComparer.Ordinal);
 
-    // Module 1: Generic Ability Range Tooltip
     public bool EnableRangeTooltip { get; set; } = true;
     public bool RangeTooltipFairySkills { get; set; } = true;
     public bool RangeTooltipTargetFairy { get; set; } = true;
     public bool RangeTooltipSelfAoes { get; set; } = true;
     public bool RangeTooltipDeploy { get; set; } = true;
 
-    // Module 2: Active Raid Mitigation Strip (default: snaps cleanly under _PartyList)
     public bool EnableMitigationStrip { get; set; } = true;
     public bool MitStripCombatOnly { get; set; } = true;
     public bool HasCustomMitPosition { get; set; } = false;
     public float MitPosX { get; set; } = 0f;
     public float MitPosY { get; set; } = 0f;
 
-    // Module 3: Direct Party-List Inline Annotations (opt-in alternatives)
     public bool EnablePartyRaiseBadges { get; set; } = false;
     public bool EnablePartyOutOfEosTag { get; set; } = false;
 
