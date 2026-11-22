@@ -4,6 +4,7 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using ScholarHelper.Core;
+using ScholarHelper.UI;
 
 namespace ScholarHelper.Rules;
 
@@ -200,8 +201,7 @@ public static class ScholarAlertRules
         public override bool DrawOptions(AlertRuleConfig cfg)
         {
             var v = cfg.Threshold;
-            ImGui.SetNextItemWidth(100f);
-            if (ImGui.SliderInt("##hp", ref v, 15, 80, "< %d%%"))
+            if (UiControls.SliderIntOption("##hp", "HP below", ref v, 15, 80, $"{v}%", step: 5))
             {
                 cfg.Threshold = v;
                 return true;
@@ -293,7 +293,7 @@ public static class ScholarAlertRules
         public override string Tooltip => "Off cooldown in combat with injured party members (Lv20+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 20;
-        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
+        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Sound;
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
@@ -304,12 +304,19 @@ public static class ScholarAlertRules
         {
             var changed = false;
             var hp = cfg.Threshold;
-            ImGui.SetNextItemWidth(84f);
-            if (ImGui.SliderInt("##wdhp", ref hp, 30, 98, "<= %d%%")) { cfg.Threshold = hp; changed = true; }
-            ImGui.SameLine(0f, 6f);
+            if (UiControls.SliderIntOption("##wdhp", "HP below", ref hp, 30, 98, $"{hp}%", step: 5))
+            {
+                cfg.Threshold = hp;
+                changed = true;
+            }
+
+            ImGui.SameLine(0f, 12f);
             var cnt = cfg.MinCount;
-            ImGui.SetNextItemWidth(74f);
-            if (ImGui.SliderInt("##wdcnt", ref cnt, 1, 8, "%d+ ppl")) { cfg.MinCount = cnt; changed = true; }
+            if (UiControls.CompactStepperInt("wdcnt", "Min", ref cnt, 1, 8, "+"))
+            {
+                cfg.MinCount = cnt;
+                changed = true;
+            }
             return changed;
         }
 
@@ -330,9 +337,7 @@ public static class ScholarAlertRules
 
             if (injured < minInjured) return AlertEvaluation.Inactive;
 
-            return AlertEvaluation.Active(
-                new HotbarGlowTarget(ActionType.Action, WhisperingDawnActionId),
-                new AlertBannerLine(Id, 35, ColorMint, [BannerSegment.Plain($"Whispering Dawn ready ({injured} <= {hpPct}%)", ColorMint)]));
+            return AlertEvaluation.Active(new HotbarGlowTarget(ActionType.Action, WhisperingDawnActionId));
         }
     }
 
@@ -379,8 +384,11 @@ public static class ScholarAlertRules
         public override bool DrawOptions(AlertRuleConfig cfg)
         {
             var m = cfg.Threshold;
-            ImGui.SetNextItemWidth(92f);
-            if (ImGui.SliderInt("##food", ref m, 1, 15, "< %d min")) { cfg.Threshold = m; return true; }
+            if (UiControls.SliderIntOption("##food", "Under", ref m, 1, 15, $"{m} min"))
+            {
+                cfg.Threshold = m;
+                return true;
+            }
             return false;
         }
 
@@ -405,7 +413,7 @@ public static class ScholarAlertRules
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 14;
         public override bool AllowAllJobsOption => true;
-        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
+        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Sound;
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
@@ -416,12 +424,16 @@ public static class ScholarAlertRules
         {
             var changed = false;
             var mp = cfg.Threshold;
-            ImGui.SetNextItemWidth(96f);
-            if (ImGui.SliderInt("##mp", ref mp, 1000, 9900, "< %d MP")) { cfg.Threshold = (mp / 100) * 100; changed = true; }
-            ImGui.SameLine(0f, 6f);
+            if (UiControls.SliderIntOption("##mp", "MP below", ref mp, 1000, 9900, $"{mp}", step: 200))
+            {
+                cfg.Threshold = mp;
+                changed = true;
+            }
+
+            ImGui.SameLine(0f, 12f);
             var co = cfg.CombatOnly;
             if (ImGui.Checkbox("Combat##lc", ref co)) { cfg.CombatOnly = co; changed = true; }
-            ImGui.SameLine(0f, 6f);
+            ImGui.SameLine(0f, 10f);
             var aj = cfg.AllJobs;
             if (ImGui.Checkbox("All jobs##la", ref aj)) { cfg.AllJobs = aj; changed = true; }
             return changed;
@@ -433,9 +445,7 @@ public static class ScholarAlertRules
             if (state.CurrentMp >= (uint)Math.Clamp(cfg.Threshold, 1000, 9900) || !state.IsOffCooldown(LucidDreamingActionId))
                 return AlertEvaluation.Inactive;
 
-            return AlertEvaluation.Active(
-                new HotbarGlowTarget(ActionType.Action, LucidDreamingActionId),
-                new AlertBannerLine(Id, 40, ColorCyan, [BannerSegment.Plain($"Lucid Dreaming ({state.CurrentMp} MP)", ColorCyan)]));
+            return AlertEvaluation.Active(new HotbarGlowTarget(ActionType.Action, LucidDreamingActionId));
         }
     }
 
@@ -446,7 +456,7 @@ public static class ScholarAlertRules
         public override string Tooltip => "Own DoT missing or expiring on your hostile target in combat (Lv2/26/72+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 2;
-        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
+        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Sound;
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
@@ -456,8 +466,11 @@ public static class ScholarAlertRules
         public override bool DrawOptions(AlertRuleConfig cfg)
         {
             var sec = cfg.FloatThreshold;
-            ImGui.SetNextItemWidth(92f);
-            if (ImGui.SliderFloat("##bio", ref sec, 0.5f, 10.0f, "<= %.1fs")) { cfg.FloatThreshold = sec; return true; }
+            if (UiControls.SliderFloatOption("##bio", "Refresh", ref sec, 0.5f, 10.0f, $"{sec:F1}s", step: 0.5f))
+            {
+                cfg.FloatThreshold = sec;
+                return true;
+            }
             return false;
         }
 
@@ -470,8 +483,7 @@ public static class ScholarAlertRules
             if (state.Level >= 26) glows.Add(new(ActionType.Action, Bio2ActionId));
             if (state.Level >= 72) glows.Add(new(ActionType.Action, BiolysisActionId));
 
-            var text = state.OwnBioRemainingSeconds <= 0.05f ? "Bio missing" : $"Refresh Bio ({state.OwnBioRemainingSeconds:F1}s)";
-            return new AlertEvaluation(true, glows, [new AlertBannerLine(Id, 50, ColorGold, [BannerSegment.Plain(text, ColorGold)])]);
+            return new AlertEvaluation(true, glows);
         }
     }
 
@@ -482,7 +494,7 @@ public static class ScholarAlertRules
         public override string Tooltip => "Off cooldown in combat (Lv45+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 45;
-        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
+        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Sound;
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
@@ -501,10 +513,7 @@ public static class ScholarAlertRules
             if (!state.InCombat || !state.IsOffCooldown(AetherflowActionId)) return AlertEvaluation.Inactive;
             if (cfg.Flag && state.AetherflowStacks > 0) return AlertEvaluation.Inactive;
 
-            var msg = state.AetherflowStacks == 0 ? "Aetherflow ready" : $"Aetherflow ready ({state.AetherflowStacks} stacks left)";
-            return AlertEvaluation.Active(
-                new HotbarGlowTarget(ActionType.Action, AetherflowActionId),
-                new AlertBannerLine(Id, 42, ColorGold, [BannerSegment.Plain(msg, ColorGold)]));
+            return AlertEvaluation.Active(new HotbarGlowTarget(ActionType.Action, AetherflowActionId));
         }
     }
 
@@ -515,7 +524,7 @@ public static class ScholarAlertRules
         public override string Tooltip => "Catalyze crit shield active while Deployment Tactics is ready (Lv56+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 56;
-        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
+        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Sound;
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
@@ -532,14 +541,7 @@ public static class ScholarAlertRules
                 {
                     return AlertEvaluation.Active(
                         new HotbarGlowTarget(ActionType.Action, DeploymentTacticsActionId),
-                        new AlertBannerLine(Id, 30, ColorGold,
-                        [
-                            BannerSegment.Plain("Critlo on ", ColorGold),
-                            BannerSegment.Job(m.ClassJobId),
-                            BannerSegment.Plain(m.Name, ColorWhite),
-                            BannerSegment.Plain(" (Deploy ready)", ColorGold),
-                        ]),
-                        $"C:{m.EntityId}");
+                        edgeKey: $"C:{m.EntityId}");
                 }
             }
 
@@ -554,7 +556,7 @@ public static class ScholarAlertRules
         public override string Tooltip => "Off cooldown in combat (Lv66+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 66;
-        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
+        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Sound;
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
@@ -564,9 +566,7 @@ public static class ScholarAlertRules
         public override AlertEvaluation Evaluate(FrameState state, AlertRuleConfig cfg)
         {
             if (!state.InCombat || !state.IsOffCooldown(ChainStratagemActionId)) return AlertEvaluation.Inactive;
-            return AlertEvaluation.Active(
-                new HotbarGlowTarget(ActionType.Action, ChainStratagemActionId),
-                new AlertBannerLine(Id, 45, ColorGold, [BannerSegment.Plain("Chain Stratagem ready", ColorGold)]));
+            return AlertEvaluation.Active(new HotbarGlowTarget(ActionType.Action, ChainStratagemActionId));
         }
     }
 
@@ -577,7 +577,7 @@ public static class ScholarAlertRules
         public override string Tooltip => "Fey Gauge reaches threshold in combat (Lv70+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 70;
-        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
+        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Sound;
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
@@ -587,8 +587,11 @@ public static class ScholarAlertRules
         public override bool DrawOptions(AlertRuleConfig cfg)
         {
             var g = cfg.Threshold;
-            ImGui.SetNextItemWidth(92f);
-            if (ImGui.SliderInt("##fg", ref g, 50, 100, ">= %d")) { cfg.Threshold = (g / 10) * 10; return true; }
+            if (UiControls.SliderIntOption("##fg", "At or over", ref g, 50, 100, $"{g}", step: 10))
+            {
+                cfg.Threshold = g;
+                return true;
+            }
             return false;
         }
 
@@ -597,9 +600,7 @@ public static class ScholarAlertRules
             if (!state.InCombat || !state.HasActivePet || state.IsDissipated) return AlertEvaluation.Inactive;
             if (state.FairyGauge < Math.Clamp(cfg.Threshold, 50, 100)) return AlertEvaluation.Inactive;
 
-            return AlertEvaluation.Active(
-                new HotbarGlowTarget(ActionType.Action, AetherpactActionId),
-                new AlertBannerLine(Id, 55, ColorGold, [BannerSegment.Plain($"Fey Gauge at {state.FairyGauge}", ColorGold)]));
+            return AlertEvaluation.Active(new HotbarGlowTarget(ActionType.Action, AetherpactActionId));
         }
     }
 
@@ -610,7 +611,7 @@ public static class ScholarAlertRules
         public override string Tooltip => "Off cooldown in combat (Lv74+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 74;
-        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
+        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Sound;
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
@@ -620,9 +621,7 @@ public static class ScholarAlertRules
         public override AlertEvaluation Evaluate(FrameState state, AlertRuleConfig cfg)
         {
             if (!state.InCombat || !state.IsOffCooldown(RecitationActionId)) return AlertEvaluation.Inactive;
-            return AlertEvaluation.Active(
-                new HotbarGlowTarget(ActionType.Action, RecitationActionId),
-                new AlertBannerLine(Id, 46, ColorGold, [BannerSegment.Plain("Recitation ready", ColorGold)]));
+            return AlertEvaluation.Active(new HotbarGlowTarget(ActionType.Action, RecitationActionId));
         }
     }
 
@@ -676,8 +675,11 @@ public static class ScholarAlertRules
         public override bool DrawOptions(AlertRuleConfig cfg)
         {
             var y = cfg.Threshold;
-            ImGui.SetNextItemWidth(92f);
-            if (ImGui.SliderInt("##fl", ref y, 12, 29, ">= %dy")) { cfg.Threshold = y; return true; }
+            if (UiControls.SliderIntOption("##fl", "Over", ref y, 12, 29, $"{y}y"))
+            {
+                cfg.Threshold = y;
+                return true;
+            }
             return false;
         }
 
