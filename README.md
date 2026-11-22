@@ -1,6 +1,6 @@
 # Scholar Helper
 
-Small FFXIV Scholar plugin I made for raiding. Everything is visual or audio only.
+Small FFXIV Scholar plugin I made for raiding. Visual and audio only.
 
 ## Install
 1. Open `/xlsettings` -> **Experimental**.
@@ -11,13 +11,14 @@ Small FFXIV Scholar plugin I made for raiding. Everything is visual or audio onl
 3. Save, open `/xlplugins`, and install **Scholar Helper**.
 
 ## Features
-Type `/sch` to turn things on or off. Every ability respects your synced level so lower-level duties stay quiet.
+Open `/sch` to turn anything on or off. Synced level is checked automatically so lower-level duties stay quiet.
 
-- **Hotbar glows & sounds:** Uses the game's built-in proc border (with optional screen text or `SE 1` to `SE 16` sounds) for Scholar cooldowns and fairy reminders.
-- **Party alerts:** Shows dead players and active co-healer raises before you hit Swiftcast, plus low tank HP, Esuna debuffs, raid food, and missing Focus Target.
-- **Ability range preview:** Hover any enabled Scholar AoE skill (Whispering Dawn, Succor, Sacred Soil, Indomitability, Deployment Tactics, etc.) to see who is in its real game range via tooltip or Party List badges.
-- **Mitigation bar:** Small combat-only row under the Party List showing active raid mits with timers.
-- **Party List raise badges:** Optional inline Raise tags next to dead Party List rows.
+- **Cooldown & fairy glows:** Highlights Scholar cooldowns and fairy actions on your hotbar with the game's proc border, plus optional banners and sounds.
+- **Raise tracking:** Shows dead party members, who is raising them, and pending raises in a banner or next to the Party List.
+- **Tank HP alert:** Warns when a tank drops below your HP threshold in combat.
+- **Reminders:** Optional reminders for Esuna debuffs, raid food, and missing Focus Target.
+- **AoE range preview:** Hover any enabled Scholar AoE skill to see who is in range via tooltip or Party List tags.
+- **Mitigation bar:** Small combat-only bar under the Party List showing active raid mitigations and timers.
 
 ## Commands
 - `/sch` or `/scholarhelper`: open settings

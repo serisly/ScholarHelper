@@ -21,6 +21,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly AlertEngine alertEngine;
     private readonly HotbarGlowHook hotbarGlowHook;
     private readonly AlertBannerOverlay bannerOverlay;
+    private readonly PartyListRaiseOverlay partyListRaiseOverlay;
     private readonly SettingsWindow settingsWindow;
     private readonly IReadOnlyList<IHelperModule> modules;
 
@@ -81,10 +82,6 @@ public sealed class Plugin : IDalamudPlugin
                 alertEngine,
                 Configuration),
             mitStripModule,
-            new PartyListAnnotationModule(
-                gameGui,
-                alertEngine,
-                Configuration),
         ];
 
         foreach (var module in modules)
@@ -93,6 +90,7 @@ public sealed class Plugin : IDalamudPlugin
         }
 
         bannerOverlay = new AlertBannerOverlay(pluginInterface, textureProvider, alertEngine, Configuration);
+        partyListRaiseOverlay = new PartyListRaiseOverlay(gameGui, alertEngine, Configuration);
         settingsWindow = new SettingsWindow(
             pluginInterface,
             Configuration,
@@ -120,6 +118,7 @@ public sealed class Plugin : IDalamudPlugin
     private void DrawUi()
     {
         windowSystem.Draw();
+        partyListRaiseOverlay.Draw();
         foreach (var module in modules)
         {
             module.DrawOverlay();

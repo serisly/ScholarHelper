@@ -77,7 +77,7 @@ public sealed class SettingsWindow : Window
         }
         if (ImGui.IsItemHovered())
         {
-            ImGui.SetTooltip("Minimum seconds between repeated sound chimes for the same alert.");
+            ImGui.SetTooltip("Minimum seconds between repeated sounds for the same alert.");
         }
 
         if (config.HasCustomBannerPosition || config.HasCustomMitPosition)
@@ -149,6 +149,7 @@ public sealed class SettingsWindow : Window
         ImGui.TableHeadersRow();
 
         changed |= DrawCategorySection("Party", AlertCategory.Party);
+        changed |= DrawCategorySection("Reminders", AlertCategory.Reminders);
         changed |= DrawCategorySection("Cooldowns", AlertCategory.Cooldowns);
         changed |= DrawCategorySection("Fairy", AlertCategory.Fairy);
 

@@ -9,7 +9,7 @@ namespace ScholarHelper;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 5;
+    public int Version { get; set; } = 6;
 
     public bool Enabled { get; set; } = true;
     public int SoundCooldownSeconds { get; set; } = 8;
@@ -30,8 +30,6 @@ public sealed class Configuration : IPluginConfiguration
     public bool HasCustomMitPosition { get; set; } = false;
     public float MitPosX { get; set; } = 0f;
     public float MitPosY { get; set; } = 0f;
-
-    public bool EnablePartyRaiseBadges { get; set; } = false;
 
     public bool IsRangeActionEnabled(uint actionId)
         => !AbilityRangeEnabled.TryGetValue(actionId, out var enabled) || enabled;
@@ -57,7 +55,6 @@ public sealed class Configuration : IPluginConfiguration
         AbilityRangeEnabled.Clear();
         EnableMitigationStrip = true;
         MitStripCombatOnly = true;
-        EnablePartyRaiseBadges = false;
     }
 
     public void Save(IDalamudPluginInterface pluginInterface)

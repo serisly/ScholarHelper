@@ -1,13 +1,13 @@
-using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Plugin.Services;
 using ScholarHelper.Core;
+using ScholarHelper.Rules;
 
-namespace ScholarHelper.Modules;
+namespace ScholarHelper.UI;
 
-public sealed class PartyListAnnotationModule : IHelperModule
+public sealed class PartyListRaiseOverlay
 {
     private static readonly uint BgDark = ImGui.ColorConvertFloat4ToU32(new Vector4(0.07f, 0.08f, 0.10f, 0.88f));
     private static readonly uint ColCoral = ImGui.ColorConvertFloat4ToU32(new Vector4(1.00f, 0.44f, 0.40f, 1f));
@@ -19,25 +19,32 @@ public sealed class PartyListAnnotationModule : IHelperModule
     private readonly Configuration config;
     private readonly List<PartyRowBounds> rowScratch = new(8);
 
-    public string Id => "party_list_annotations";
-    public string DisplayName => "Party List Raise Badges";
-    public string Tooltip => "Draws compact Raise status pills beside dead Party List rows (alternative to floating Raise banner).";
-
-    public PartyListAnnotationModule(IGameGui gameGui, AlertEngine alertEngine, Configuration config)
+    public PartyListRaiseOverlay(IGameGui gameGui, AlertEngine alertEngine, Configuration config)
     {
         this.gameGui = gameGui;
         this.alertEngine = alertEngine;
         this.config = config;
     }
 
-    public void Enable() { }
-
-    public void DrawOverlay()
+    public void Draw()
     {
-        if (!config.Enabled || !config.EnablePartyRaiseBadges) return;
+        if (!config.Enabled) return;
+        if (!config.RuleConfigs.TryGetValue(ScholarAlertRules.RaiseTrackerRuleId, out var raiseCfg)
+            || !raiseCfg.Enabled
+            || !raiseCfg.Flag)
+        {
+            return;
+        }
 
         var state = alertEngine.State;
-        if (!state.IsLoggedIn || state.Party.Count <= 1) return;
+        if (!state.IsLoggedIn
+            || !state.IsAlive
+            || state.Party.Count <= 1
+            || !ScholarAlertRules.CanJobRaise(state.ClassJobId, state.Level))
+        {
+            return;
+        }
+
         if (!PartyListGeometry.TryGetPartyBounds(gameGui, out _, out _, rowScratch) || rowScratch.Count == 0) return;
 
         var vp = ImGui.GetMainViewport();
@@ -55,18 +62,4 @@ public sealed class PartyListAnnotationModule : IHelperModule
             else PartyListGeometry.DrawRowPill(draw, x, centerY, "NEEDS RAISE", BgDark, ColCoral);
         }
     }
-
-    public bool DrawSettings()
-    {
-        var raiseBadges = config.EnablePartyRaiseBadges;
-        if (ImGui.Checkbox("Show NEEDS RAISE / RAISING / PENDING beside dead party rows", ref raiseBadges))
-        {
-            config.EnablePartyRaiseBadges = raiseBadges;
-            return true;
-        }
-
-        return false;
-    }
-
-    public void Dispose() { }
 }

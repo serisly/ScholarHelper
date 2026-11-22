@@ -45,17 +45,20 @@ public static class ScholarAlertRules
     private static readonly Vector4 ColorWhite = new(0.95f, 0.96f, 0.98f, 1f);
     private static readonly Vector4 ColorMuted = new(0.72f, 0.75f, 0.80f, 1f);
 
+    public const string RaiseTrackerRuleId = "raise_tracker";
+
     public static IReadOnlyList<AlertRule> CreateAll() =>
     [
         new RaiseTrackerRule(),
         new TankLowHpRule(),
+
         new EsunaRule(),
-        new WhisperingDawnRule(),
         new FocusTargetRule(),
         new RaidFoodRule(),
 
-        new LucidDreamingRule(),
         new BioDotRule(),
+        new LucidDreamingRule(),
+        new WhisperingDawnRule(),
         new AetherflowRule(),
         new CritloDeployRule(),
         new ChainStratagemRule(),
@@ -85,7 +88,7 @@ public static class ScholarAlertRules
         _ => 0,
     };
 
-    private static bool CanJobRaise(uint classJobId, byte level) => classJobId switch
+    public static bool CanJobRaise(uint classJobId, byte level) => classJobId switch
     {
         6 or 24 or 26 or 27 or 28 or 33 or 40 => level >= 12,
         35 => level >= 64,
@@ -95,9 +98,9 @@ public static class ScholarAlertRules
 
     private sealed class RaiseTrackerRule : AlertRule
     {
-        public override string Id => "raise_tracker";
+        public override string Id => RaiseTrackerRuleId;
         public override string DisplayName => "Raise Tracker";
-        public override string Tooltip => "Always shows who is dead, who is being raised, and who has a pending Raise so you don't waste Swiftcast.";
+        public override string Tooltip => "Shows dead party members, who is raising them, and pending raises.";
         public override AlertCategory Category => AlertCategory.Party;
         public override byte MinLevel => 12;
         public override bool ScholarOnly => false;
@@ -105,8 +108,15 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = 6,
+            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = 6, Flag = false,
         };
+
+        public override bool DrawOptions(AlertRuleConfig cfg)
+        {
+            var tags = cfg.Flag;
+            if (ImGui.Checkbox("Party List tags##rt", ref tags)) { cfg.Flag = tags; return true; }
+            return false;
+        }
 
         public override AlertEvaluation Evaluate(FrameState state, AlertRuleConfig cfg)
         {
@@ -176,7 +186,7 @@ public static class ScholarAlertRules
     {
         public override string Id => "tank_low_hp";
         public override string DisplayName => "Tank Low HP";
-        public override string Tooltip => "Warns in combat when an alive tank drops below the HP threshold.";
+        public override string Tooltip => "Tank drops below the HP threshold in combat.";
         public override AlertCategory Category => AlertCategory.Party;
         public override byte MinLevel => 1;
         public override bool ScholarOnly => false;
@@ -239,8 +249,8 @@ public static class ScholarAlertRules
     {
         public override string Id => "esuna";
         public override string DisplayName => "Esuna";
-        public override string Tooltip => "Detects white-bar cleanseable debuffs on party members (Lv10+).";
-        public override AlertCategory Category => AlertCategory.Party;
+        public override string Tooltip => "Party member has a dispellable debuff (Lv10+).";
+        public override AlertCategory Category => AlertCategory.Reminders;
         public override byte MinLevel => 10;
         public override bool ScholarOnly => false;
         public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
@@ -280,8 +290,8 @@ public static class ScholarAlertRules
     {
         public override string Id => "whispering_dawn";
         public override string DisplayName => "Whispering Dawn";
-        public override string Tooltip => "Off cooldown in combat with injured party members (SCH Lv20+).";
-        public override AlertCategory Category => AlertCategory.Party;
+        public override string Tooltip => "Off cooldown in combat with injured party members (Lv20+).";
+        public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 20;
         public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
 
@@ -331,7 +341,7 @@ public static class ScholarAlertRules
         public override string Id => "focus_target";
         public override string DisplayName => "Focus Target";
         public override string Tooltip => "Reminds you inside duties when no Focus Target is set.";
-        public override AlertCategory Category => AlertCategory.Party;
+        public override AlertCategory Category => AlertCategory.Reminders;
         public override byte MinLevel => 1;
         public override bool ScholarOnly => false;
         public override AlertCapabilities Capabilities => AlertCapabilities.Banner | AlertCapabilities.Sound;
@@ -364,8 +374,8 @@ public static class ScholarAlertRules
     {
         public override string Id => "raid_food";
         public override string DisplayName => "Raid Food";
-        public override string Tooltip => "Pre-pull check in duties when Well Fed is missing or expiring soon (hides in combat).";
-        public override AlertCategory Category => AlertCategory.Party;
+        public override string Tooltip => "Pre-pull check in duties when Well Fed is missing or expiring soon.";
+        public override AlertCategory Category => AlertCategory.Reminders;
         public override byte MinLevel => 1;
         public override bool ScholarOnly => false;
         public override AlertCapabilities Capabilities => AlertCapabilities.Banner | AlertCapabilities.Sound;
@@ -478,7 +488,7 @@ public static class ScholarAlertRules
     {
         public override string Id => "aetherflow";
         public override string DisplayName => "Aetherflow";
-        public override string Tooltip => "Off 60s cooldown in combat (SCH Lv45+).";
+        public override string Tooltip => "Off cooldown in combat (Lv45+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 45;
         public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
@@ -510,8 +520,8 @@ public static class ScholarAlertRules
     private sealed class CritloDeployRule : AlertRule
     {
         public override string Id => "critlo_spread";
-        public override string DisplayName => "Critlo Deploy (Lv56+)";
-        public override string Tooltip => "Glows Deployment Tactics when your Catalyze crit shield is active and Deploy is ready (auto-hidden below Lv56).";
+        public override string DisplayName => "Critlo Deploy";
+        public override string Tooltip => "Catalyze crit shield active while Deployment Tactics is ready (Lv56+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 56;
         public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
@@ -549,8 +559,8 @@ public static class ScholarAlertRules
     private sealed class ChainStratagemRule : AlertRule
     {
         public override string Id => "chain_stratagem";
-        public override string DisplayName => "Chain Stratagem (Lv66+)";
-        public override string Tooltip => "Off 120s cooldown in combat (auto-hidden below Lv66).";
+        public override string DisplayName => "Chain Stratagem";
+        public override string Tooltip => "Off cooldown in combat (Lv66+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 66;
         public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
@@ -572,8 +582,8 @@ public static class ScholarAlertRules
     private sealed class FeyGaugeCapRule : AlertRule
     {
         public override string Id => "fey_gauge_cap";
-        public override string DisplayName => "Fey Gauge Cap (Lv70+)";
-        public override string Tooltip => "Glows Aetherpact when Fey Gauge reaches threshold in combat (auto-hidden below Lv70).";
+        public override string DisplayName => "Fey Gauge Cap";
+        public override string Tooltip => "Fey Gauge reaches threshold in combat (Lv70+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 70;
         public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
@@ -605,8 +615,8 @@ public static class ScholarAlertRules
     private sealed class RecitationRule : AlertRule
     {
         public override string Id => "recitation";
-        public override string DisplayName => "Recitation (Lv74+)";
-        public override string Tooltip => "Off 60s cooldown in combat (auto-hidden below Lv74).";
+        public override string DisplayName => "Recitation";
+        public override string Tooltip => "Off cooldown in combat (Lv74+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 74;
         public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
@@ -629,7 +639,7 @@ public static class ScholarAlertRules
     {
         public override string Id => "missing_fairy";
         public override string DisplayName => "Missing Fairy";
-        public override string Tooltip => "Highlights Summon Eos when no fairy is out (auto-hides mounted, zoning, cutscenes, Dissipation/Seraph).";
+        public override string Tooltip => "No fairy active outside mounts, cutscenes, or Dissipation (Lv30+).";
         public override AlertCategory Category => AlertCategory.Fairy;
         public override byte MinLevel => 30;
         public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
@@ -662,7 +672,7 @@ public static class ScholarAlertRules
     {
         public override string Id => "fairy_leash";
         public override string DisplayName => "Fairy Leash";
-        public override string Tooltip => "Warns and highlights Heel when Eos is parked beyond your leash distance (Lv30+).";
+        public override string Tooltip => "Eos is beyond your leash distance (Lv30+).";
         public override AlertCategory Category => AlertCategory.Fairy;
         public override byte MinLevel => 30;
         public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;

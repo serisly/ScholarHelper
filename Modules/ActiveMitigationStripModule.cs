@@ -33,7 +33,7 @@ public sealed class ActiveMitigationStripModule : IHelperModule
 
     public string Id => "active_mitigation_strip";
     public string DisplayName => "Active Raid Mitigation Strip";
-    public string Tooltip => "Icon row of live boss/party mitigations (Reprisal, Addle, Feint, Soil, Kerachole, etc.). Anchors under Party List by default.";
+    public string Tooltip => "Shows active boss and party mitigations under the Party List by default.";
 
     public ActiveMitigationStripModule(
         IDalamudPluginInterface pluginInterface,

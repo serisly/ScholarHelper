@@ -301,7 +301,14 @@ public sealed unsafe class AlertEngine : IDisposable
         }
 
         var focusObj = targetManager.FocusTarget;
-        BuildMitigations(player, hostileNpc, focusObj as IBattleNpc);
+        if (config.EnableMitigationStrip)
+        {
+            BuildMitigations(player, hostileNpc, focusObj as IBattleNpc);
+        }
+        else
+        {
+            mitScratch.Clear();
+        }
         BuildParty(player);
 
         return new FrameState

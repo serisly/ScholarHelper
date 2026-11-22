@@ -9,6 +9,7 @@ namespace ScholarHelper.Core;
 public enum AlertCategory
 {
     Party,
+    Reminders,
     Cooldowns,
     Fairy,
 }

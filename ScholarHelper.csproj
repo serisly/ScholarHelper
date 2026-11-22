@@ -2,12 +2,12 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
 
   <PropertyGroup>
-    <Version>0.3.0.0</Version>
+    <Version>0.3.1.0</Version>
     <Author>Seris</Author>
     <Name>Scholar Helper</Name>
     <InternalName>ScholarHelper</InternalName>
     <Punchline>Scholar cooldown glows and party alerts.</Punchline>
-    <Description>Personal FFXIV Scholar plugin for raiding. Uses the game's built-in hotbar proc glow for cooldowns and fairy reminders, plus simple party alerts and hover range tooltips.</Description>
+    <Description>Personal FFXIV Scholar plugin for raiding. Hotbar proc glows for cooldowns and fairy skills, party alerts, reminders, and AoE range previews.</Description>
     <RepoUrl>https://github.com/serisly/ScholarHelper</RepoUrl>
     <IconUrl>https://raw.githubusercontent.com/serisly/ScholarHelper/main/images/icon.png</IconUrl>
     <Tags>scholar;healer;hotbar;cooldown;utility</Tags>
