@@ -9,7 +9,7 @@ namespace ScholarHelper;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 4;
+    public int Version { get; set; } = 5;
 
     public bool Enabled { get; set; } = true;
     public int SoundCooldownSeconds { get; set; } = 8;
@@ -20,11 +20,10 @@ public sealed class Configuration : IPluginConfiguration
 
     public Dictionary<string, AlertRuleConfig> RuleConfigs { get; set; } = new(StringComparer.Ordinal);
 
-    public bool EnableRangeTooltip { get; set; } = true;
-    public bool RangeTooltipFairySkills { get; set; } = true;
-    public bool RangeTooltipTargetFairy { get; set; } = true;
-    public bool RangeTooltipSelfAoes { get; set; } = true;
-    public bool RangeTooltipDeploy { get; set; } = true;
+    public bool EnableAbilityRange { get; set; } = true;
+    public bool ShowRangeTooltip { get; set; } = true;
+    public bool ShowRangePartyBadges { get; set; } = false;
+    public Dictionary<uint, bool> AbilityRangeEnabled { get; set; } = new();
 
     public bool EnableMitigationStrip { get; set; } = true;
     public bool MitStripCombatOnly { get; set; } = true;
@@ -33,8 +32,9 @@ public sealed class Configuration : IPluginConfiguration
     public float MitPosY { get; set; } = 0f;
 
     public bool EnablePartyRaiseBadges { get; set; } = false;
-    public bool EnablePartyOutOfEosTag { get; set; } = false;
-    public int PartyEosRangeYalms { get; set; } = 15;
+
+    public bool IsRangeActionEnabled(uint actionId)
+        => !AbilityRangeEnabled.TryGetValue(actionId, out var enabled) || enabled;
 
     public void ResetPositions()
     {
@@ -51,16 +51,13 @@ public sealed class Configuration : IPluginConfiguration
         Enabled = true;
         SoundCooldownSeconds = 8;
         ResetPositions();
-        EnableRangeTooltip = true;
-        RangeTooltipFairySkills = true;
-        RangeTooltipTargetFairy = true;
-        RangeTooltipSelfAoes = true;
-        RangeTooltipDeploy = true;
+        EnableAbilityRange = true;
+        ShowRangeTooltip = true;
+        ShowRangePartyBadges = false;
+        AbilityRangeEnabled.Clear();
         EnableMitigationStrip = true;
         MitStripCombatOnly = true;
         EnablePartyRaiseBadges = false;
-        EnablePartyOutOfEosTag = false;
-        PartyEosRangeYalms = 15;
     }
 
     public void Save(IDalamudPluginInterface pluginInterface)

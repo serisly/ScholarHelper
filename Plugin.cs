@@ -35,6 +35,7 @@ public sealed class Plugin : IDalamudPlugin
         IJobGauges jobGauges,
         ITargetManager targetManager,
         ICondition condition,
+        IDataManager dataManager,
         IGameGui gameGui,
         ITextureProvider textureProvider,
         IGameInteropProvider gameInteropProvider,
@@ -72,7 +73,8 @@ public sealed class Plugin : IDalamudPlugin
 
         modules =
         [
-            new AbilityRangeTooltipModule(
+            new AbilityRangeModule(
+                dataManager,
                 gameGui,
                 objectTable,
                 textureProvider,

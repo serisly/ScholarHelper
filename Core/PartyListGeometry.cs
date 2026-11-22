@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Memory;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI;
@@ -142,5 +143,42 @@ public static unsafe class PartyListGeometry
         return MemoryHelper.ReadSeStringNullTerminated((nint)textNode->NodeText.StringPtr.Value)
             .TextValue
             .Trim();
+    }
+
+    public static bool TryMatchMember(IReadOnlyList<PartyMemberState> party, PartyRowBounds row, out PartyMemberState matched)
+    {
+        if (!string.IsNullOrEmpty(row.DisplayName))
+        {
+            foreach (var m in party)
+            {
+                if (string.Equals(m.Name, row.DisplayName, StringComparison.OrdinalIgnoreCase))
+                {
+                    matched = m;
+                    return true;
+                }
+            }
+        }
+
+        if (row.RowIndex >= 0 && row.RowIndex < party.Count)
+        {
+            matched = party[row.RowIndex];
+            return true;
+        }
+
+        matched = default;
+        return false;
+    }
+
+    public static float DrawRowPill(ImDrawListPtr draw, float x, float centerY, string text, uint bgColor, uint accentColor)
+    {
+        var size = ImGui.CalcTextSize(text);
+        const float padX = 6f;
+        const float padY = 2f;
+        var min = new Vector2(x, centerY - (size.Y * 0.5f) - padY);
+        var max = new Vector2(x + size.X + (padX * 2f), centerY + (size.Y * 0.5f) + padY);
+        draw.AddRectFilled(min, max, bgColor, 3.5f);
+        draw.AddRect(min, max, accentColor, 3.5f, ImDrawFlags.None, 1.1f);
+        draw.AddText(new Vector2(min.X + padX, min.Y + padY), accentColor, text);
+        return max.X + 5f;
     }
 }

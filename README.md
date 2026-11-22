@@ -15,9 +15,9 @@ Type `/sch` to turn things on or off. Every ability respects your synced level s
 
 - **Hotbar glows & sounds:** Uses the game's built-in proc border (with optional screen text or `SE 1` to `SE 16` sounds) for Scholar cooldowns and fairy reminders.
 - **Party alerts:** Shows dead players and active co-healer raises before you hit Swiftcast, plus low tank HP, Esuna debuffs, raid food, and missing Focus Target.
-- **Range tooltips:** Hover fairy or AoE skills (or target Eos) to see who is in range.
+- **Ability range preview:** Hover any enabled Scholar AoE skill (Whispering Dawn, Succor, Sacred Soil, Indomitability, Deployment Tactics, etc.) to see who is in its real game range via tooltip or Party List badges.
 - **Mitigation bar:** Small combat-only row under the Party List showing active raid mits with timers.
-- **Party List badges:** Optional inline Raise and out-of-Eos-range tags next to Party List rows.
+- **Party List raise badges:** Optional inline Raise tags next to dead Party List rows.
 
 ## Commands
 - `/sch` or `/scholarhelper`: open settings
