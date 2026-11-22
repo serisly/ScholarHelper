@@ -3,8 +3,6 @@ using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Client.System.String;
-using FFXIVClientStructs.FFXIV.Client.UI;
 using ScholarHelper.Core;
 using ScholarHelper.Modules;
 using ScholarHelper.Rules;
@@ -16,7 +14,6 @@ public sealed class Plugin : IDalamudPlugin
 {
     private const string CommandShort = "/sch";
     private const string CommandLong = "/scholarhelper";
-    private const string ParseToggleCommand = "/parse";
 
     private readonly IDalamudPluginInterface pluginInterface;
     private readonly ICommandManager commandManager;
@@ -116,10 +113,6 @@ public sealed class Plugin : IDalamudPlugin
         {
             HelpMessage = "Open Scholar Helper settings (/scholarhelper).",
         });
-        this.commandManager.AddHandler(ParseToggleCommand, new CommandInfo(OnParseToggleCommand)
-        {
-            HelpMessage = "Toggle LMeter Raid DPS & Healer Compare windows (/parse).",
-        });
     }
 
     private void DrawUi()
@@ -135,41 +128,10 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnSettingsCommand(string command, string args) => settingsWindow.Toggle();
 
-    private unsafe void OnParseToggleCommand(string command, string args)
-    {
-        var uiModule = UIModule.Instance();
-        if (uiModule == null)
-        {
-            return;
-        }
-
-        ExecuteChatCommand(uiModule, "/lm toggle 1");
-        ExecuteChatCommand(uiModule, "/lm toggle 2");
-    }
-
-    private static unsafe void ExecuteChatCommand(UIModule* uiModule, string commandText)
-    {
-        var cmd = Utf8String.FromString(commandText);
-        if (cmd == null)
-        {
-            return;
-        }
-
-        try
-        {
-            uiModule->ProcessChatBoxEntry(cmd, nint.Zero, false);
-        }
-        finally
-        {
-            cmd->Dtor(true);
-        }
-    }
-
     public void Dispose()
     {
         commandManager.RemoveHandler(CommandShort);
         commandManager.RemoveHandler(CommandLong);
-        commandManager.RemoveHandler(ParseToggleCommand);
         pluginInterface.UiBuilder.Draw -= DrawUi;
         pluginInterface.UiBuilder.OpenConfigUi -= ToggleSettingsWindow;
         pluginInterface.UiBuilder.OpenMainUi -= ToggleSettingsWindow;
