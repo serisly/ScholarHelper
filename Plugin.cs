@@ -30,6 +30,7 @@ public sealed class Plugin : IDalamudPlugin
     public Plugin(
         IDalamudPluginInterface pluginInterface,
         IFramework framework,
+        IClientState clientState,
         IObjectTable objectTable,
         IPartyList partyList,
         IBuddyList buddyList,
@@ -51,6 +52,8 @@ public sealed class Plugin : IDalamudPlugin
         var rules = ScholarAlertRules.CreateAll();
         alertEngine = new AlertEngine(
             framework,
+            clientState,
+            dataManager,
             objectTable,
             partyList,
             buddyList,
@@ -82,6 +85,11 @@ public sealed class Plugin : IDalamudPlugin
                 alertEngine,
                 Configuration),
             mitStripModule,
+            new SacredSoilSelfCastModule(
+                gameInteropProvider,
+                objectTable,
+                Configuration,
+                log),
         ];
 
         foreach (var module in modules)

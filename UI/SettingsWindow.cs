@@ -111,7 +111,7 @@ public sealed class SettingsWindow : Window
                 ImGui.EndTabItem();
             }
 
-            if (ImGui.BeginTabItem("Overlays & Tooltips"))
+            if (ImGui.BeginTabItem("Overlays & Actions"))
             {
                 changed |= DrawModulesTab();
                 ImGui.EndTabItem();

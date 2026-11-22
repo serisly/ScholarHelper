@@ -141,6 +141,7 @@ public sealed unsafe class FrameState
     public uint CastActionId { get; init; }
     public bool InCombat { get; init; }
     public bool InDuty { get; init; }
+    public bool IsBossEncounter { get; init; }
     public bool IsPetSuppressed { get; init; }
 
     public bool HasFocusTarget { get; init; }

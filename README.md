@@ -1,6 +1,6 @@
 # Scholar Helper
 
-Small FFXIV Scholar plugin I made for raiding. Visual and audio only.
+Small FFXIV Scholar plugin I made for raiding.
 
 ## Install
 1. Open `/xlsettings` -> **Experimental**.
@@ -16,9 +16,10 @@ Open `/sch` to turn anything on or off. Synced level is checked automatically so
 - **Cooldown & fairy glows:** Highlights Scholar cooldowns and fairy actions on your hotbar with the game's proc border, plus optional banners and sounds.
 - **Raise tracking:** Shows dead party members, who is raising them, and pending raises in a banner or next to the Party List.
 - **Tank HP alert:** Warns when a tank drops below your HP threshold in combat.
-- **Reminders:** Optional reminders for Esuna debuffs, raid food, and missing Focus Target.
+- **Reminders:** Optional reminders for Esuna debuffs, raid food, and missing Focus Target during raids and boss fights.
 - **AoE range preview:** Hover any enabled Scholar AoE skill to see who is in range via tooltip or Party List tags.
 - **Mitigation bar:** Small combat-only bar under the Party List showing active raid mitigations and timers.
+- **Sacred Soil at self:** Optional toggle to cast Sacred Soil directly on yourself instead of opening ground targeting.
 
 ## Commands
 - `/sch` or `/scholarhelper`: open settings

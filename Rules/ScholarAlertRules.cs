@@ -340,7 +340,7 @@ public static class ScholarAlertRules
     {
         public override string Id => "focus_target";
         public override string DisplayName => "Focus Target";
-        public override string Tooltip => "Reminds you inside duties when no Focus Target is set.";
+        public override string Tooltip => "Reminds you in raids, trials, and boss fights when no Focus Target is set.";
         public override AlertCategory Category => AlertCategory.Reminders;
         public override byte MinLevel => 1;
         public override bool ScholarOnly => false;
@@ -348,21 +348,12 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = false, EnableBanner = true, SoundId = 9, CombatOnly = false,
+            Enabled = true, EnableGlow = false, EnableBanner = true, SoundId = 9,
         };
-
-        public override bool DrawOptions(AlertRuleConfig cfg)
-        {
-            var c = cfg.CombatOnly;
-            if (ImGui.Checkbox("Combat only##ft", ref c)) { cfg.CombatOnly = c; return true; }
-            return false;
-        }
 
         public override AlertEvaluation Evaluate(FrameState state, AlertRuleConfig cfg)
         {
-            if (!state.InDuty || !state.IsHealer || state.IsPetSuppressed || state.HasFocusTarget)
-                return AlertEvaluation.Inactive;
-            if (cfg.CombatOnly && !state.InCombat)
+            if (!state.IsBossEncounter || state.IsPetSuppressed || state.HasFocusTarget)
                 return AlertEvaluation.Inactive;
 
             return AlertEvaluation.Active(

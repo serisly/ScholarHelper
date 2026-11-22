@@ -9,6 +9,8 @@ using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using Lumina.Excel;
+using Lumina.Excel.Sheets;
 using ScholarHelper.Rules;
 
 namespace ScholarHelper.Core;
@@ -39,6 +41,7 @@ public sealed unsafe class AlertEngine : IDisposable
     ];
 
     private readonly IFramework framework;
+    private readonly IClientState clientState;
     private readonly IObjectTable objectTable;
     private readonly IPartyList partyList;
     private readonly IBuddyList buddyList;
@@ -48,6 +51,8 @@ public sealed unsafe class AlertEngine : IDisposable
     private readonly Configuration config;
     private readonly IPluginLog log;
     private readonly IReadOnlyList<AlertRule> rules;
+    private readonly ExcelSheet<TerritoryType>? territorySheet;
+    private readonly ExcelSheet<BNpcBase>? bnpcBaseSheet;
 
     private readonly HashSet<HotbarGlowTarget> activeGlows = new();
     private readonly List<AlertBannerLine> activeBanners = new();
@@ -59,6 +64,8 @@ public sealed unsafe class AlertEngine : IDisposable
     private readonly HashSet<string> mitDedupScratch = new(StringComparer.Ordinal);
     private readonly Dictionary<uint, (string Name, uint JobId)> raiserScratch = new(4);
 
+    private uint cachedTerritoryId = uint.MaxValue;
+    private bool cachedIsBossInstance;
     private bool isSubscribed;
     private bool hasLoggedError;
 
@@ -68,6 +75,8 @@ public sealed unsafe class AlertEngine : IDisposable
 
     public AlertEngine(
         IFramework framework,
+        IClientState clientState,
+        IDataManager dataManager,
         IObjectTable objectTable,
         IPartyList partyList,
         IBuddyList buddyList,
@@ -79,6 +88,7 @@ public sealed unsafe class AlertEngine : IDisposable
         IPluginLog log)
     {
         this.framework = framework;
+        this.clientState = clientState;
         this.objectTable = objectTable;
         this.partyList = partyList;
         this.buddyList = buddyList;
@@ -88,6 +98,9 @@ public sealed unsafe class AlertEngine : IDisposable
         this.config = config;
         this.rules = rules;
         this.log = log;
+
+        territorySheet = dataManager.GetExcelSheet<TerritoryType>();
+        bnpcBaseSheet = dataManager.GetExcelSheet<BNpcBase>();
 
         EnsureRuleConfigs();
     }
@@ -311,6 +324,12 @@ public sealed unsafe class AlertEngine : IDisposable
         }
         BuildParty(player);
 
+        var inCombat = condition[ConditionFlag.InCombat];
+        var inDuty = condition[ConditionFlag.BoundByDuty]
+                     || condition[ConditionFlag.BoundByDuty56]
+                     || condition[ConditionFlag.BoundByDuty95];
+        var isBossEncounter = IsCurrentBossEncounter(inDuty, inCombat, hostileNpc);
+
         return new FrameState
         {
             IsLoggedIn = true,
@@ -323,10 +342,9 @@ public sealed unsafe class AlertEngine : IDisposable
             Position = player.Position,
             IsCasting = player.IsCasting,
             CastActionId = player.CastActionId,
-            InCombat = condition[ConditionFlag.InCombat],
-            InDuty = condition[ConditionFlag.BoundByDuty]
-                     || condition[ConditionFlag.BoundByDuty56]
-                     || condition[ConditionFlag.BoundByDuty95],
+            InCombat = inCombat,
+            InDuty = inDuty,
+            IsBossEncounter = isBossEncounter,
             IsPetSuppressed = condition[ConditionFlag.Mounted]
                               || condition[ConditionFlag.RidingPillion]
                               || condition[ConditionFlag.Mounting]
@@ -359,6 +377,54 @@ public sealed unsafe class AlertEngine : IDisposable
             ActiveMitigations = mitScratch,
             ActionManagerPtr = ActionManager.Instance(),
         };
+    }
+
+    private bool IsCurrentBossEncounter(bool inDuty, bool inCombat, IBattleNpc? hostileTarget)
+    {
+        var territoryId = clientState.TerritoryType;
+        if (territoryId != cachedTerritoryId)
+        {
+            cachedTerritoryId = territoryId;
+            cachedIsBossInstance = ResolveBossInstance(territoryId);
+        }
+
+        if (cachedIsBossInstance) return true;
+        if (!inDuty) return false;
+        if (hostileTarget != null && IsBossNpc(hostileTarget)) return true;
+        if (!inCombat) return false;
+
+        foreach (var obj in objectTable)
+        {
+            if (obj is IBattleNpc npc
+                && npc.BattleNpcKind is BattleNpcSubKind.Combatant or BattleNpcSubKind.BNpcPart
+                && npc.IsTargetable
+                && npc.CurrentHp > 0
+                && (npc.StatusFlags & StatusFlags.InCombat) != 0
+                && IsBossNpc(npc))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool ResolveBossInstance(uint territoryId)
+    {
+        var row = territorySheet?.GetRowOrDefault(territoryId);
+        if (!row.HasValue) return false;
+
+        var intendedUse = row.Value.TerritoryIntendedUse.RowId;
+        if (intendedUse is 10 or 16 or 17 or 36) return true;
+
+        var cfc = row.Value.ContentFinderCondition.ValueNullable;
+        return cfc.HasValue && cfc.Value.ContentType.RowId is 4 or 5 or 28 or 37;
+    }
+
+    private bool IsBossNpc(IBattleNpc npc)
+    {
+        var row = bnpcBaseSheet?.GetRowOrDefault(npc.BaseId);
+        return row.HasValue && row.Value.Rank is 2 or 6;
     }
 
     private void BuildMitigations(IPlayerCharacter player, IBattleNpc? hostileTarget, IBattleNpc? focusTarget)
