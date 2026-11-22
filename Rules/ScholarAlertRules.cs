@@ -111,7 +111,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = 6, Flag = false,
+            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = SoundEffects.ToneUrgent, Flag = false,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -202,7 +202,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = false, EnableBanner = true, SoundId = 5, Threshold = 45,
+            Enabled = true, EnableGlow = false, EnableBanner = true, SoundId = SoundEffects.ToneAlert, Threshold = 45,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -264,7 +264,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = 7,
+            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = SoundEffects.ToneDoubleChime,
         };
 
         public override AlertEvaluation Evaluate(FrameState state, AlertRuleConfig cfg)
@@ -304,7 +304,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, EnableBanner = false, SoundId = 1, Threshold = 85, MinCount = 2,
+            Enabled = true, EnableGlow = true, EnableBanner = false, SoundId = SoundEffects.ToneChime, Threshold = 85, MinCount = 2,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -354,7 +354,7 @@ public static class ScholarAlertRules
     {
         public override string Id => "focus_target";
         public override string DisplayName => "Focus Target";
-        public override string Tooltip => "Reminds you in raids, trials, and boss fights when no Focus Target is set.";
+        public override string Tooltip => "Reminds you when no Focus Target is set (follows Reminders Raids & Trials / Dungeons toggles).";
         public override AlertCategory Category => AlertCategory.Reminders;
         public override byte MinLevel => 1;
         public override bool ScholarOnly => false;
@@ -362,13 +362,16 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = false, EnableBanner = true, SoundId = 9,
+            Enabled = true, EnableGlow = false, EnableBanner = true, SoundId = SoundEffects.ToneSoftDing,
         };
 
         public override AlertEvaluation Evaluate(FrameState state, AlertRuleConfig cfg)
         {
-            if (!state.IsBossEncounter || state.IsPetSuppressed || state.HasFocusTarget)
-                return AlertEvaluation.Inactive;
+            if (state.IsPetSuppressed || state.HasFocusTarget) return AlertEvaluation.Inactive;
+
+            var allowed = (state.IsRaidOrTrial && state.RemindersInRaidsAndTrials)
+                          || (state.IsDungeon && state.RemindersInDungeons && state.IsBossEnemyActive);
+            if (!allowed) return AlertEvaluation.Inactive;
 
             return AlertEvaluation.Active(
                 banner: new AlertBannerLine(Id, 60, ColorGold, [BannerSegment.Plain("No Focus Target set", ColorGold)]));
@@ -379,7 +382,7 @@ public static class ScholarAlertRules
     {
         public override string Id => "raid_food";
         public override string DisplayName => "Raid Food";
-        public override string Tooltip => "Pre-pull check in duties when Well Fed is missing or expiring. Glow highlights meals on hotbars and in open bags.";
+        public override string Tooltip => "Pre-pull check when Well Fed is missing or expiring (follows Reminders Raids & Trials / Dungeons toggles). Glow highlights meals on hotbars and in open bags.";
         public override AlertCategory Category => AlertCategory.Reminders;
         public override byte MinLevel => 1;
         public override bool ScholarOnly => false;
@@ -387,7 +390,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = 1, Threshold = 5,
+            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = SoundEffects.ToneSoftDing, Threshold = 5,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -403,7 +406,12 @@ public static class ScholarAlertRules
 
         public override AlertEvaluation Evaluate(FrameState state, AlertRuleConfig cfg)
         {
-            if (!state.InDuty || state.InCombat || state.IsPetSuppressed) return AlertEvaluation.Inactive;
+            if (state.InCombat || state.IsPetSuppressed) return AlertEvaluation.Inactive;
+
+            var allowed = (state.IsRaidOrTrial && state.RemindersInRaidsAndTrials)
+                          || (state.IsDungeon && state.RemindersInDungeons);
+            if (!allowed) return AlertEvaluation.Inactive;
+
             var warnMin = Math.Clamp(cfg.Threshold, 1, 15);
             if (state.HasFoodBuff && state.FoodRemainingMinutes >= warnMin) return AlertEvaluation.Inactive;
 
@@ -428,7 +436,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = 1, Threshold = 20,
+            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = SoundEffects.ToneSoftDing, Threshold = 20,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -470,7 +478,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, SoundId = 1, Threshold = 7000, CombatOnly = true, AllJobs = true,
+            Enabled = true, EnableGlow = true, SoundId = SoundEffects.ToneChime, Threshold = 7000, CombatOnly = true, AllJobs = true,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -508,14 +516,14 @@ public static class ScholarAlertRules
     {
         public override string Id => "bio";
         public override string DisplayName => "Bio / Biolysis";
-        public override string Tooltip => "Own DoT missing or expiring on your hostile target in combat (Lv2/26/72+).";
+        public override string Tooltip => "Own DoT missing or expiring on your target (or Focus Target) in combat (Lv2/26/72+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 2;
         public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, SoundId = 16, FloatThreshold = 3.0f,
+            Enabled = true, EnableGlow = true, SoundId = SoundEffects.ToneHighPing, FloatThreshold = 3.0f,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -554,7 +562,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, SoundId = 2, Flag = false,
+            Enabled = true, EnableGlow = true, SoundId = SoundEffects.ToneBell, Flag = false,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -587,7 +595,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, SoundId = 6,
+            Enabled = true, EnableGlow = true, SoundId = SoundEffects.ToneDoubleChime,
         };
 
         public override AlertEvaluation Evaluate(FrameState state, AlertRuleConfig cfg)
@@ -626,7 +634,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, SoundId = 4,
+            Enabled = true, EnableGlow = true, SoundId = SoundEffects.ToneBell,
         };
 
         public override AlertEvaluation Evaluate(FrameState state, AlertRuleConfig cfg)
@@ -649,7 +657,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, SoundId = 9, Threshold = 100,
+            Enabled = true, EnableGlow = true, SoundId = SoundEffects.ToneSoftDing, Threshold = 100,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -685,7 +693,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, SoundId = 8,
+            Enabled = true, EnableGlow = true, SoundId = SoundEffects.ToneChime,
         };
 
         public override AlertEvaluation Evaluate(FrameState state, AlertRuleConfig cfg)
@@ -708,7 +716,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, SoundId = 3, Flag = false,
+            Enabled = true, EnableGlow = true, SoundId = SoundEffects.ToneAlert, Flag = false,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -741,7 +749,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = 11, Threshold = 22,
+            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = SoundEffects.ToneLowPulse, Threshold = 22,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)

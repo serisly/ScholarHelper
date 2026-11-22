@@ -20,6 +20,7 @@ public sealed class SettingsWindow : Window
     private readonly AlertEngine alertEngine;
     private readonly AlertBannerOverlay bannerOverlay;
     private readonly ActiveMitigationStripModule mitStripModule;
+    private readonly SlidecastBarModule slidecastBarModule;
     private readonly IReadOnlyList<IHelperModule> modules;
 
     private bool overlaysUnlocked;
@@ -30,6 +31,7 @@ public sealed class SettingsWindow : Window
         AlertEngine alertEngine,
         AlertBannerOverlay bannerOverlay,
         ActiveMitigationStripModule mitStripModule,
+        SlidecastBarModule slidecastBarModule,
         IReadOnlyList<IHelperModule> modules)
         : base("Scholar Helper###ScholarHelperSettings")
     {
@@ -38,14 +40,15 @@ public sealed class SettingsWindow : Window
         this.alertEngine = alertEngine;
         this.bannerOverlay = bannerOverlay;
         this.mitStripModule = mitStripModule;
+        this.slidecastBarModule = slidecastBarModule;
         this.modules = modules;
 
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(760, 500),
-            MaximumSize = new Vector2(1150, 960),
+            MinimumSize = new Vector2(800, 520),
+            MaximumSize = new Vector2(1200, 960),
         };
-        Size = new Vector2(840, 660);
+        Size = new Vector2(880, 680);
         SizeCondition = ImGuiCond.FirstUseEver;
     }
 
@@ -56,6 +59,7 @@ public sealed class SettingsWindow : Window
         overlaysUnlocked = unlocked;
         bannerOverlay.IsPositionUnlocked = unlocked;
         mitStripModule.IsPositionUnlocked = unlocked;
+        slidecastBarModule.IsPositionUnlocked = unlocked;
     }
 
     public override void Draw()
@@ -69,11 +73,41 @@ public sealed class SettingsWindow : Window
         var enabled = config.Enabled;
         if (ImGui.Checkbox("Enabled", ref enabled)) { config.Enabled = enabled; changed = true; }
 
-        ImGui.SameLine(0f, 18f);
+        ImGui.SameLine(0f, 14f);
         var unlocked = overlaysUnlocked;
         if (ImGui.Checkbox("Move Overlays", ref unlocked)) SetOverlaysUnlocked(unlocked);
 
-        ImGui.SameLine(0f, 20f);
+        ImGui.SameLine(0f, 18f);
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextColored(ColorMuted, "Volume");
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("Volume for Scholar Helper alert tones (Chime, Bell, Alert, etc.). Game SE 1-16 follow FFXIV System Sounds.");
+        }
+
+        ImGui.SameLine(0f, 6f);
+        var vol = config.SoundVolume;
+        if (UiControls.DrawSleekSliderInt("##vol", ref vol, 0, 100, 76f, toolbarY))
+        {
+            config.SoundVolume = vol;
+            changed = true;
+        }
+        if (ImGui.IsItemDeactivatedAfterEdit())
+        {
+            SoundEffects.Play(SoundEffects.ToneChime, config.SoundVolume);
+        }
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("Volume for Scholar Helper alert tones (Chime, Bell, Alert, etc.). Game SE 1-16 follow FFXIV System Sounds.");
+        }
+
+        ImGui.SameLine(0f, 6f);
+        ImGui.SetCursorPosY(toolbarY);
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextColored(ColorWhite, $"{config.SoundVolume}%");
+
+        ImGui.SameLine(0f, 16f);
+        ImGui.SetCursorPosY(toolbarY);
         ImGui.AlignTextToFramePadding();
         ImGui.TextColored(ColorMuted, "Sound CD");
         if (ImGui.IsItemHovered())
@@ -81,9 +115,9 @@ public sealed class SettingsWindow : Window
             ImGui.SetTooltip("Minimum seconds between repeated sounds for the same alert.");
         }
 
-        ImGui.SameLine(0f, 8f);
+        ImGui.SameLine(0f, 6f);
         var scd = config.SoundCooldownSeconds;
-        if (UiControls.DrawSleekSliderInt("##scd", ref scd, 1, 30, 86f, toolbarY))
+        if (UiControls.DrawSleekSliderInt("##scd", ref scd, 1, 30, 66f, toolbarY))
         {
             config.SoundCooldownSeconds = scd;
             changed = true;
@@ -93,12 +127,12 @@ public sealed class SettingsWindow : Window
             ImGui.SetTooltip("Minimum seconds between repeated sounds for the same alert.");
         }
 
-        ImGui.SameLine(0f, 8f);
+        ImGui.SameLine(0f, 6f);
         ImGui.SetCursorPosY(toolbarY);
         ImGui.AlignTextToFramePadding();
         ImGui.TextColored(ColorWhite, $"{config.SoundCooldownSeconds}s");
 
-        var hasCustomPos = config.HasCustomBannerPosition || config.HasCustomMitPosition;
+        var hasCustomPos = config.HasCustomBannerPosition || config.HasCustomMitPosition || config.HasCustomCastBarPosition;
         var rightEdge = ImGui.GetWindowContentRegionMax().X;
         var resetDefaultsW = ImGui.CalcTextSize("Reset Defaults").X + 16f;
         var resetPosW = hasCustomPos ? ImGui.CalcTextSize("Reset Positions").X + 16f + 8f : 0f;
@@ -178,17 +212,17 @@ public sealed class SettingsWindow : Window
         }
 
         ImGui.TableSetupScrollFreeze(0, 1);
-        ImGui.TableSetupColumn("Alert", ImGuiTableColumnFlags.WidthFixed, 168f);
-        ImGui.TableSetupColumn("Glow", ImGuiTableColumnFlags.WidthFixed, 46f);
-        ImGui.TableSetupColumn("Banner", ImGuiTableColumnFlags.WidthFixed, 56f);
-        ImGui.TableSetupColumn("Sound", ImGuiTableColumnFlags.WidthFixed, 114f);
+        ImGui.TableSetupColumn("Alert", ImGuiTableColumnFlags.WidthFixed, 162f);
+        ImGui.TableSetupColumn("Glow", ImGuiTableColumnFlags.WidthFixed, 44f);
+        ImGui.TableSetupColumn("Banner", ImGuiTableColumnFlags.WidthFixed, 54f);
+        ImGui.TableSetupColumn("Sound", ImGuiTableColumnFlags.WidthFixed, 138f);
         ImGui.TableSetupColumn("Options", ImGuiTableColumnFlags.WidthStretch);
 
         ImGui.TableNextRow(ImGuiTableRowFlags.Headers);
         DrawHeaderCell(0, "Alert", null);
-        DrawHeaderCell(1, "Glow", "Highlights the ability on your hotbar with the game's proc border.");
+        DrawHeaderCell(1, "Glow", "Highlights the ability on your hotbar (or dead party row / food in bags).");
         DrawHeaderCell(2, "Banner", "Shows a text line in the floating Alert Banner.");
-        DrawHeaderCell(3, "Sound", "Plays an in-game SE sound when the alert triggers.");
+        DrawHeaderCell(3, "Sound", "Plays an alert tone (uses Volume slider) or in-game SE 1-16.");
         DrawHeaderCell(4, "Options", null);
 
         changed |= DrawCategorySection("Party", AlertCategory.Party);
@@ -227,7 +261,21 @@ public sealed class SettingsWindow : Window
         ImGui.TableNextRow();
         ImGui.TableSetBgColor(ImGuiTableBgTarget.RowBg0, CategoryRowBg);
         ImGui.TableSetColumnIndex(0);
+        ImGui.AlignTextToFramePadding();
         ImGui.TextColored(ColorGold, header);
+
+        if (category == AlertCategory.Reminders)
+        {
+            ImGui.TableSetColumnIndex(4);
+            var raids = config.RemindersInRaidsAndTrials;
+            if (ImGui.Checkbox("Raids & Trials##rem_rt", ref raids)) { config.RemindersInRaidsAndTrials = raids; changed = true; }
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Run Focus Target and Raid Food reminders in Raids and Trials.");
+
+            ImGui.SameLine(0f, 14f);
+            var dungeons = config.RemindersInDungeons;
+            if (ImGui.Checkbox("Dungeons##rem_dg", ref dungeons)) { config.RemindersInDungeons = dungeons; changed = true; }
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Also run Focus Target (on bosses) and Raid Food reminders in Dungeons. Esuna and Repair Gear stay active everywhere.");
+        }
 
         var cbWidth = ImGui.GetFrameHeight();
         var dashWidth = ImGui.CalcTextSize("-").X;
@@ -290,23 +338,37 @@ public sealed class SettingsWindow : Window
                 if (ImGui.Checkbox("##sn", ref sound))
                 {
                     cfg.EnableSound = sound;
-                    if (sound) SoundEffects.Play(cfg.SoundId);
+                    if (sound) SoundEffects.Play(cfg.SoundId, config.SoundVolume);
                     changed = true;
                 }
 
                 if (cfg.EnableSound)
                 {
                     ImGui.SameLine(0f, 6f);
-                    ImGui.SetNextItemWidth(72f);
+                    ImGui.SetNextItemWidth(100f);
                     if (ImGui.BeginCombo("##se", SoundEffects.GetLabel(cfg.SoundId)))
                     {
-                        for (var id = SoundEffects.MinId; id <= SoundEffects.MaxId; id++)
+                        foreach (var tone in SoundEffects.BuiltInTones)
+                        {
+                            var selected = tone.Id == cfg.SoundId;
+                            if (ImGui.Selectable(tone.Label, selected))
+                            {
+                                cfg.SoundId = tone.Id;
+                                SoundEffects.Play(tone.Id, config.SoundVolume);
+                                changed = true;
+                            }
+                            if (selected) ImGui.SetItemDefaultFocus();
+                        }
+
+                        ImGui.Separator();
+
+                        for (var id = SoundEffects.GameMinId; id <= SoundEffects.GameMaxId; id++)
                         {
                             var selected = id == cfg.SoundId;
                             if (ImGui.Selectable(SoundEffects.GetLabel(id), selected))
                             {
                                 cfg.SoundId = id;
-                                SoundEffects.Play(id);
+                                SoundEffects.Play(id, config.SoundVolume);
                                 changed = true;
                             }
                             if (selected) ImGui.SetItemDefaultFocus();

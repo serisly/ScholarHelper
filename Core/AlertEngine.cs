@@ -68,7 +68,8 @@ public sealed unsafe class AlertEngine : IDisposable
     private readonly Dictionary<uint, (string Name, uint JobId)> raiserScratch = new(4);
 
     private uint cachedTerritoryId = uint.MaxValue;
-    private bool cachedIsBossInstance;
+    private bool cachedIsRaidOrTrial;
+    private bool cachedIsDungeon;
     private bool isSubscribed;
     private bool hasLoggedError;
 
@@ -253,7 +254,7 @@ public sealed unsafe class AlertEngine : IDisposable
                         var last = lastSoundUtc.GetValueOrDefault(rule.Id, DateTime.MinValue);
                         if ((now - last).TotalSeconds >= cd)
                         {
-                            SoundEffects.Play(cfg.SoundId);
+                            SoundEffects.Play(cfg.SoundId, config.SoundVolume);
                             lastSoundUtc[rule.Id] = now;
                         }
                     }
@@ -336,16 +337,13 @@ public sealed unsafe class AlertEngine : IDisposable
             }
         }
 
-        IBattleNpc? hostileNpc = null;
+        var focusObj = targetManager.FocusTarget;
+        IBattleNpc? hostileNpc = ResolveHostileNpc(player.TargetObject) ?? ResolveHostileNpc(focusObj);
         var bioRemaining = 0f;
-        if (player.TargetObject is IBattleNpc npc
-            && npc.BattleNpcKind is BattleNpcSubKind.Combatant or BattleNpcSubKind.BNpcPart
-            && npc.IsTargetable
-            && npc.CurrentHp > 0)
+        if (hostileNpc != null)
         {
-            hostileNpc = npc;
             var selfId = player.EntityId;
-            foreach (var st in npc.StatusList)
+            foreach (var st in hostileNpc.StatusList)
             {
                 if (st.SourceId == selfId
                     && st.StatusId is BioStatusId or Bio2StatusId or BiolysisStatusId or BiolysisAltStatusId)
@@ -356,7 +354,6 @@ public sealed unsafe class AlertEngine : IDisposable
             }
         }
 
-        var focusObj = targetManager.FocusTarget;
         if (config.EnableMitigationStrip)
         {
             BuildMitigations(player, hostileNpc, focusObj as IBattleNpc);
@@ -371,7 +368,8 @@ public sealed unsafe class AlertEngine : IDisposable
         var inDuty = condition[ConditionFlag.BoundByDuty]
                      || condition[ConditionFlag.BoundByDuty56]
                      || condition[ConditionFlag.BoundByDuty95];
-        var isBossEncounter = IsCurrentBossEncounter(inDuty, inCombat, hostileNpc);
+        UpdateTerritoryCache();
+        var isBossEnemyActive = HasActiveBossEnemy(inDuty, inCombat, hostileNpc);
         var lowestGearPct = inCombat ? 100 : ReadLowestGearConditionPercent();
 
         return new FrameState
@@ -388,7 +386,11 @@ public sealed unsafe class AlertEngine : IDisposable
             CastActionId = player.CastActionId,
             InCombat = inCombat,
             InDuty = inDuty,
-            IsBossEncounter = isBossEncounter,
+            IsRaidOrTrial = cachedIsRaidOrTrial,
+            IsDungeon = cachedIsDungeon,
+            IsBossEnemyActive = isBossEnemyActive,
+            RemindersInRaidsAndTrials = config.RemindersInRaidsAndTrials,
+            RemindersInDungeons = config.RemindersInDungeons,
             IsPetSuppressed = condition[ConditionFlag.Mounted]
                               || condition[ConditionFlag.RidingPillion]
                               || condition[ConditionFlag.Mounting]
@@ -424,16 +426,44 @@ public sealed unsafe class AlertEngine : IDisposable
         };
     }
 
-    private bool IsCurrentBossEncounter(bool inDuty, bool inCombat, IBattleNpc? hostileTarget)
+    private static IBattleNpc? ResolveHostileNpc(IGameObject? obj)
     {
-        var territoryId = clientState.TerritoryType;
-        if (territoryId != cachedTerritoryId)
+        if (obj is IBattleNpc npc
+            && npc.BattleNpcKind is BattleNpcSubKind.Combatant or BattleNpcSubKind.BNpcPart
+            && npc.IsTargetable
+            && npc.CurrentHp > 0)
         {
-            cachedTerritoryId = territoryId;
-            cachedIsBossInstance = ResolveBossInstance(territoryId);
+            return npc;
         }
 
-        if (cachedIsBossInstance) return true;
+        return null;
+    }
+
+    private void UpdateTerritoryCache()
+    {
+        var territoryId = clientState.TerritoryType;
+        if (territoryId == cachedTerritoryId) return;
+
+        cachedTerritoryId = territoryId;
+        cachedIsRaidOrTrial = false;
+        cachedIsDungeon = false;
+
+        var row = territorySheet?.GetRowOrDefault(territoryId);
+        if (!row.HasValue) return;
+
+        var intendedUse = row.Value.TerritoryIntendedUse.RowId;
+        var cfc = row.Value.ContentFinderCondition.ValueNullable;
+        var contentType = cfc.HasValue ? cfc.Value.ContentType.RowId : 0;
+
+        cachedIsRaidOrTrial = intendedUse is 8 or 10 or 16 or 17 or 36
+                              || contentType is 4 or 5 or 28 or 37;
+        cachedIsDungeon = !cachedIsRaidOrTrial
+                          && (intendedUse is 3 or 4 or 31 or 57 or 58
+                              || contentType is 2 or 21 or 30);
+    }
+
+    private bool HasActiveBossEnemy(bool inDuty, bool inCombat, IBattleNpc? hostileTarget)
+    {
         if (!inDuty) return false;
         if (hostileTarget != null && IsBossNpc(hostileTarget)) return true;
         if (!inCombat) return false;
@@ -452,18 +482,6 @@ public sealed unsafe class AlertEngine : IDisposable
         }
 
         return false;
-    }
-
-    private bool ResolveBossInstance(uint territoryId)
-    {
-        var row = territorySheet?.GetRowOrDefault(territoryId);
-        if (!row.HasValue) return false;
-
-        var intendedUse = row.Value.TerritoryIntendedUse.RowId;
-        if (intendedUse is 10 or 16 or 17 or 36) return true;
-
-        var cfc = row.Value.ContentFinderCondition.ValueNullable;
-        return cfc.HasValue && cfc.Value.ContentType.RowId is 4 or 5 or 28 or 37;
     }
 
     private bool IsBossNpc(IBattleNpc npc)

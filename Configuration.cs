@@ -9,10 +9,14 @@ namespace ScholarHelper;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 7;
+    public int Version { get; set; } = 8;
 
     public bool Enabled { get; set; } = true;
     public int SoundCooldownSeconds { get; set; } = 8;
+    public int SoundVolume { get; set; } = 85;
+
+    public bool RemindersInRaidsAndTrials { get; set; } = true;
+    public bool RemindersInDungeons { get; set; } = false;
 
     public bool HasCustomBannerPosition { get; set; } = false;
     public float BannerPosX { get; set; } = 0f;
@@ -31,7 +35,16 @@ public sealed class Configuration : IPluginConfiguration
     public float MitPosX { get; set; } = 0f;
     public float MitPosY { get; set; } = 0f;
 
+    public bool EnableSlidecastBar { get; set; } = true;
+    public int SlidecastWindowMs { get; set; } = 500;
+    public int SlidecastBarWidth { get; set; } = 260;
+    public int SlidecastBarHeight { get; set; } = 28;
+    public bool HasCustomCastBarPosition { get; set; } = false;
+    public float CastBarPosX { get; set; } = 0f;
+    public float CastBarPosY { get; set; } = 0f;
+
     public bool SacredSoilAtSelf { get; set; } = false;
+    public bool MouseoverPartyHealing { get; set; } = false;
 
     public bool IsRangeActionEnabled(uint actionId)
         => !AbilityRangeEnabled.TryGetValue(actionId, out var enabled) || enabled;
@@ -44,12 +57,18 @@ public sealed class Configuration : IPluginConfiguration
         HasCustomMitPosition = false;
         MitPosX = 0f;
         MitPosY = 0f;
+        HasCustomCastBarPosition = false;
+        CastBarPosX = 0f;
+        CastBarPosY = 0f;
     }
 
     public void ResetModuleDefaults()
     {
         Enabled = true;
         SoundCooldownSeconds = 8;
+        SoundVolume = 85;
+        RemindersInRaidsAndTrials = true;
+        RemindersInDungeons = false;
         ResetPositions();
         EnableAbilityRange = true;
         ShowRangeTooltip = true;
@@ -57,7 +76,12 @@ public sealed class Configuration : IPluginConfiguration
         AbilityRangeEnabled.Clear();
         EnableMitigationStrip = true;
         MitStripCombatOnly = true;
+        EnableSlidecastBar = true;
+        SlidecastWindowMs = 500;
+        SlidecastBarWidth = 260;
+        SlidecastBarHeight = 28;
         SacredSoilAtSelf = false;
+        MouseoverPartyHealing = false;
     }
 
     public void Save(IDalamudPluginInterface pluginInterface)

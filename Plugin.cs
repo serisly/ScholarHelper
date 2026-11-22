@@ -76,6 +76,12 @@ public sealed class Plugin : IDalamudPlugin
             alertEngine,
             Configuration);
 
+        var slidecastBarModule = new SlidecastBarModule(
+            pluginInterface,
+            dataManager,
+            objectTable,
+            Configuration);
+
         modules =
         [
             new AbilityRangeModule(
@@ -86,8 +92,10 @@ public sealed class Plugin : IDalamudPlugin
                 alertEngine,
                 Configuration),
             mitStripModule,
-            new SacredSoilSelfCastModule(
+            slidecastBarModule,
+            new ActionTweaksModule(
                 gameInteropProvider,
+                dataManager,
                 objectTable,
                 Configuration,
                 log),
@@ -107,6 +115,7 @@ public sealed class Plugin : IDalamudPlugin
             alertEngine,
             bannerOverlay,
             mitStripModule,
+            slidecastBarModule,
             modules);
         windowSystem.AddWindow(bannerOverlay);
         windowSystem.AddWindow(settingsWindow);

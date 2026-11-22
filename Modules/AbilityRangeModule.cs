@@ -5,13 +5,14 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.Sheets;
 using ScholarHelper.Core;
 using ScholarHelper.Rules;
 
 namespace ScholarHelper.Modules;
 
-public sealed class AbilityRangeModule : IHelperModule
+public sealed unsafe class AbilityRangeModule : IHelperModule
 {
     private enum RangeOrigin { Fairy, Self, DeployTarget }
 
@@ -132,6 +133,11 @@ public sealed class AbilityRangeModule : IHelperModule
 
         var state = alertEngine.State;
         if (!state.IsLoggedIn || !state.IsScholar || state.Party.Count == 0) return;
+
+        var detailPtr = gameGui.GetAddonByName("ActionDetail", 1);
+        if (detailPtr == nint.Zero) return;
+        var detailAddon = (AtkUnitBase*)detailPtr.Address;
+        if (detailAddon == null || !detailAddon->IsVisible) return;
 
         var hovered = gameGui.HoveredAction;
         var hoveredId = hovered.ActionId != 0 ? hovered.ActionId : hovered.BaseActionId;

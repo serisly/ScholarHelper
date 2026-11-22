@@ -80,25 +80,6 @@ public sealed class AlertRuleConfig
     public bool Flag { get; set; } = false;
 }
 
-public static class SoundEffects
-{
-    public const int MinId = 1;
-    public const int MaxId = 16;
-
-    public static string GetLabel(int soundId) => $"SE {Math.Clamp(soundId, MinId, MaxId)}";
-
-    public static void Play(int soundId)
-    {
-        try
-        {
-            UIGlobals.PlayChatSoundEffect((uint)Math.Clamp(soundId, MinId, MaxId));
-        }
-        catch
-        {
-        }
-    }
-}
-
 public readonly record struct ActiveMitigation(
     uint StatusId,
     uint IconId,
@@ -148,7 +129,11 @@ public sealed unsafe class FrameState
     public uint CastActionId { get; init; }
     public bool InCombat { get; init; }
     public bool InDuty { get; init; }
-    public bool IsBossEncounter { get; init; }
+    public bool IsRaidOrTrial { get; init; }
+    public bool IsDungeon { get; init; }
+    public bool IsBossEnemyActive { get; init; }
+    public bool RemindersInRaidsAndTrials { get; init; }
+    public bool RemindersInDungeons { get; init; }
     public bool IsPetSuppressed { get; init; }
 
     public bool HasFocusTarget { get; init; }
