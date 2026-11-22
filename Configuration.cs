@@ -12,6 +12,7 @@ public sealed class Configuration : IPluginConfiguration
     public int Version { get; set; } = 4;
 
     public bool Enabled { get; set; } = true;
+    public int SoundCooldownSeconds { get; set; } = 8;
 
     public bool HasCustomBannerPosition { get; set; } = false;
     public float BannerPosX { get; set; } = 0f;
@@ -33,6 +34,7 @@ public sealed class Configuration : IPluginConfiguration
 
     public bool EnablePartyRaiseBadges { get; set; } = false;
     public bool EnablePartyOutOfEosTag { get; set; } = false;
+    public int PartyEosRangeYalms { get; set; } = 15;
 
     public void ResetPositions()
     {
@@ -47,6 +49,7 @@ public sealed class Configuration : IPluginConfiguration
     public void ResetModuleDefaults()
     {
         Enabled = true;
+        SoundCooldownSeconds = 8;
         ResetPositions();
         EnableRangeTooltip = true;
         RangeTooltipFairySkills = true;
@@ -57,6 +60,7 @@ public sealed class Configuration : IPluginConfiguration
         MitStripCombatOnly = true;
         EnablePartyRaiseBadges = false;
         EnablePartyOutOfEosTag = false;
+        PartyEosRangeYalms = 15;
     }
 
     public void Save(IDalamudPluginInterface pluginInterface)

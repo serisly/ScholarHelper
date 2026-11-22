@@ -27,35 +27,16 @@ public sealed unsafe class AlertEngine : IDisposable
     private const uint CatalyzeStatusId = 1918;
     private const uint InvalidEntityId = 0xE0000000;
 
-    private static readonly Dictionary<uint, (string Name, uint IconId)> BossMitDebuffs = new()
-    {
-        [1193] = ("Reprisal", 213901),
-        [1203] = ("Addle", 213917),
-        [1195] = ("Feint", 213904),
-        [860]  = ("Dismantle", 213009),
-    };
+    private static readonly HashSet<uint> BossMitDebuffIds =
+    [
+        1193, 1203, 1195, 860,
+    ];
 
-    private static readonly Dictionary<uint, (string Name, uint IconId)> PartyMitBuffs = new()
-    {
-        [299]  = ("Soil", 212803),
-        [1944] = ("Soil", 212802),
-        [2638] = ("Soil", 212803),
-        [317]  = ("Illum", 212828),
-        [1875] = ("Seraphic", 212847),
-        [2711] = ("Expedient", 212816),
-        [2618] = ("Kerachole", 212964),
-        [3003] = ("Holos", 212971),
-        [1873] = ("Temperance", 212633),
-        [1872] = ("Temperance", 212634),
-        [849]  = ("CU", 213226),
-        [1839] = ("Heart", 213609),
-        [1894] = ("Missionary", 213122),
-        [1175] = ("Passage", 212512),
-        [1934] = ("Troubadour", 212615),
-        [1951] = ("Tactician", 213021),
-        [1826] = ("Samba", 213715),
-        [2707] = ("Magick", 213408),
-    };
+    private static readonly HashSet<uint> PartyMitBuffIds =
+    [
+        299, 1944, 2638, 317, 1875, 2711, 2618, 3003,
+        1873, 1872, 849, 1839, 1894, 1175, 1934, 1951, 1826, 2707,
+    ];
 
     private readonly IFramework framework;
     private readonly IObjectTable objectTable;
@@ -213,7 +194,7 @@ public sealed unsafe class AlertEngine : IDisposable
 
                 if ((rule.Capabilities & AlertCapabilities.Sound) != 0 && cfg.EnableSound && (!prevActive || keyChanged))
                 {
-                    var cd = Math.Clamp(cfg.SoundCooldownSeconds, 1f, 60f);
+                    var cd = Math.Clamp(config.SoundCooldownSeconds, 1, 30);
                     var last = lastSoundUtc.GetValueOrDefault(rule.Id, DateTime.MinValue);
                     if ((now - last).TotalSeconds >= cd)
                     {
@@ -388,18 +369,26 @@ public sealed unsafe class AlertEngine : IDisposable
         {
             foreach (var st in boss.StatusList)
             {
-                if (BossMitDebuffs.TryGetValue(st.StatusId, out var info) && mitDedupScratch.Add($"D:{info.Name}"))
+                if (!BossMitDebuffIds.Contains(st.StatusId)) continue;
+                var row = st.GameData.ValueNullable;
+                if (!row.HasValue || row.Value.Icon == 0) continue;
+                var name = row.Value.Name.ExtractText();
+                if (mitDedupScratch.Add($"D:{name}"))
                 {
-                    mitScratch.Add(new ActiveMitigation(st.StatusId, info.IconId, info.Name, st.RemainingTime, IsBossDebuff: true));
+                    mitScratch.Add(new ActiveMitigation(st.StatusId, row.Value.Icon, name, st.RemainingTime, IsBossDebuff: true));
                 }
             }
         }
 
         foreach (var st in player.StatusList)
         {
-            if (PartyMitBuffs.TryGetValue(st.StatusId, out var info) && mitDedupScratch.Add($"B:{info.Name}"))
+            if (!PartyMitBuffIds.Contains(st.StatusId)) continue;
+            var row = st.GameData.ValueNullable;
+            if (!row.HasValue || row.Value.Icon == 0) continue;
+            var name = row.Value.Name.ExtractText();
+            if (mitDedupScratch.Add($"B:{name}"))
             {
-                mitScratch.Add(new ActiveMitigation(st.StatusId, info.IconId, info.Name, st.RemainingTime, IsBossDebuff: false));
+                mitScratch.Add(new ActiveMitigation(st.StatusId, row.Value.Icon, name, st.RemainingTime, IsBossDebuff: false));
             }
         }
     }

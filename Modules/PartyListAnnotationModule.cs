@@ -9,8 +9,6 @@ namespace ScholarHelper.Modules;
 
 public sealed class PartyListAnnotationModule : IHelperModule
 {
-    private const float EosWhisperingDawnRadius = 15f;
-
     private static readonly uint BgDark = ImGui.ColorConvertFloat4ToU32(new Vector4(0.07f, 0.08f, 0.10f, 0.88f));
     private static readonly uint ColCoral = ImGui.ColorConvertFloat4ToU32(new Vector4(1.00f, 0.44f, 0.40f, 1f));
     private static readonly uint ColMint = ImGui.ColorConvertFloat4ToU32(new Vector4(0.54f, 0.92f, 0.66f, 1f));
@@ -70,7 +68,7 @@ public sealed class PartyListAnnotationModule : IHelperModule
             if (checkEosRange && !m.IsDead)
             {
                 var dist = Vector3.Distance(m.Position, state.PetPosition);
-                if (dist > EosWhisperingDawnRadius)
+                if (dist > Math.Clamp(config.PartyEosRangeYalms, 10, 30))
                 {
                     DrawPill(draw, x, centerY, $"EOS {dist:F0}y", ColAmber);
                 }
@@ -127,10 +125,22 @@ public sealed class PartyListAnnotationModule : IHelperModule
         }
 
         var eosTag = config.EnablePartyOutOfEosTag;
-        if (ImGui.Checkbox("Out-of-Eos-range tag beside party rows (> 15y in combat)", ref eosTag))
+        if (ImGui.Checkbox("Out-of-Eos-range tag beside party rows in combat", ref eosTag))
         {
             config.EnablePartyOutOfEosTag = eosTag;
             changed = true;
+        }
+
+        if (config.EnablePartyOutOfEosTag)
+        {
+            ImGui.SameLine(0f, 10f);
+            var yalms = config.PartyEosRangeYalms;
+            ImGui.SetNextItemWidth(95f);
+            if (ImGui.SliderInt("##peos", ref yalms, 10, 30, "> %dy"))
+            {
+                config.PartyEosRangeYalms = yalms;
+                changed = true;
+            }
         }
 
         return changed;

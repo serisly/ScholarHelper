@@ -64,7 +64,6 @@ public sealed class AlertRuleConfig
     public bool EnableBanner { get; set; } = false;
     public bool EnableSound { get; set; } = false;
     public int SoundId { get; set; } = 1;
-    public float SoundCooldownSeconds { get; set; } = 8f;
 
     public int Threshold { get; set; }
     public float FloatThreshold { get; set; }

@@ -105,7 +105,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = 6, SoundCooldownSeconds = 6f,
+            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = 6,
         };
 
         public override AlertEvaluation Evaluate(FrameState state, AlertRuleConfig cfg)
@@ -184,7 +184,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = false, EnableBanner = true, SoundId = 5, SoundCooldownSeconds = 6f, Threshold = 45,
+            Enabled = true, EnableGlow = false, EnableBanner = true, SoundId = 5, Threshold = 45,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -247,7 +247,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = 7, SoundCooldownSeconds = 6f,
+            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = 7,
         };
 
         public override AlertEvaluation Evaluate(FrameState state, AlertRuleConfig cfg)
@@ -287,7 +287,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, EnableBanner = false, SoundId = 1, SoundCooldownSeconds = 10f, Threshold = 85, MinCount = 2,
+            Enabled = true, EnableGlow = true, EnableBanner = false, SoundId = 1, Threshold = 85, MinCount = 2,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -330,7 +330,7 @@ public static class ScholarAlertRules
     {
         public override string Id => "focus_target";
         public override string DisplayName => "Focus Target";
-        public override string Tooltip => "Reminds you inside duties when no Focus Target (Shift+F on boss) is set.";
+        public override string Tooltip => "Reminds you inside duties when no Focus Target is set.";
         public override AlertCategory Category => AlertCategory.Party;
         public override byte MinLevel => 1;
         public override bool ScholarOnly => false;
@@ -338,7 +338,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = false, EnableBanner = true, SoundId = 9, SoundCooldownSeconds = 20f, CombatOnly = false,
+            Enabled = true, EnableGlow = false, EnableBanner = true, SoundId = 9, CombatOnly = false,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -356,7 +356,7 @@ public static class ScholarAlertRules
                 return AlertEvaluation.Inactive;
 
             return AlertEvaluation.Active(
-                banner: new AlertBannerLine(Id, 60, ColorGold, [BannerSegment.Plain("No Focus Target (Shift+F on boss)", ColorGold)]));
+                banner: new AlertBannerLine(Id, 60, ColorGold, [BannerSegment.Plain("No Focus Target set", ColorGold)]));
         }
     }
 
@@ -372,7 +372,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = false, EnableBanner = true, SoundId = 1, SoundCooldownSeconds = 30f, Threshold = 5,
+            Enabled = true, EnableGlow = false, EnableBanner = true, SoundId = 1, Threshold = 5,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -408,7 +408,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, SoundId = 1, SoundCooldownSeconds = 12f, Threshold = 7000, CombatOnly = true, AllJobs = true,
+            Enabled = true, EnableGlow = true, SoundId = 1, Threshold = 7000, CombatOnly = true, AllJobs = true,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -449,7 +449,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, SoundId = 16, SoundCooldownSeconds = 6f, FloatThreshold = 3.0f,
+            Enabled = true, EnableGlow = true, SoundId = 16, FloatThreshold = 3.0f,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -485,7 +485,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, SoundId = 2, SoundCooldownSeconds = 12f, Flag = false,
+            Enabled = true, EnableGlow = true, SoundId = 2, Flag = false,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -518,7 +518,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, SoundId = 6, SoundCooldownSeconds = 10f,
+            Enabled = true, EnableGlow = true, SoundId = 6,
         };
 
         public override AlertEvaluation Evaluate(FrameState state, AlertRuleConfig cfg)
@@ -557,7 +557,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, SoundId = 4, SoundCooldownSeconds = 15f,
+            Enabled = true, EnableGlow = true, SoundId = 4,
         };
 
         public override AlertEvaluation Evaluate(FrameState state, AlertRuleConfig cfg)
@@ -580,7 +580,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, SoundId = 9, SoundCooldownSeconds = 15f, Threshold = 100,
+            Enabled = true, EnableGlow = true, SoundId = 9, Threshold = 100,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -613,7 +613,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, SoundId = 8, SoundCooldownSeconds = 15f,
+            Enabled = true, EnableGlow = true, SoundId = 8,
         };
 
         public override AlertEvaluation Evaluate(FrameState state, AlertRuleConfig cfg)
@@ -636,7 +636,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, SoundId = 3, SoundCooldownSeconds = 12f, Flag = false,
+            Enabled = true, EnableGlow = true, SoundId = 3, Flag = false,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -669,7 +669,7 @@ public static class ScholarAlertRules
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = 11, SoundCooldownSeconds = 10f, Threshold = 22,
+            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = 11, Threshold = 22,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)

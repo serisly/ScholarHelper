@@ -25,7 +25,7 @@ public sealed class AbilityRangeTooltipModule : IHelperModule
         [ScholarAlertRules.WhisperingDawnActionId]    = new("Whispering Dawn",            15f, RangeOrigin.Fairy, 20),
         [FeyBlessingActionId]                         = new("Fey Blessing",               20f, RangeOrigin.Fairy, 76),
         [FeyIlluminationActionId]                     = new("Fey Illumination",           30f, RangeOrigin.Fairy, 40),
-        [ScholarAlertRules.SacredSoilActionId]        = new("Sacred Soil (<me>)",         15f, RangeOrigin.Self, 50),
+        [ScholarAlertRules.SacredSoilActionId]        = new("Sacred Soil",                15f, RangeOrigin.Self, 50),
         [ScholarAlertRules.SuccorActionId]            = new("Succor",                     20f, RangeOrigin.Self, 35),
         [ScholarAlertRules.ConcitationActionId]       = new("Concitation",                20f, RangeOrigin.Self, 96),
         [ScholarAlertRules.IndomitabilityActionId]    = new("Indomitability",             20f, RangeOrigin.Self, 52),

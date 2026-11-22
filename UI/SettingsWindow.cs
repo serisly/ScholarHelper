@@ -67,6 +67,19 @@ public sealed class SettingsWindow : Window
         var unlocked = overlaysUnlocked;
         if (ImGui.Checkbox("Move Overlays", ref unlocked)) SetOverlaysUnlocked(unlocked);
 
+        ImGui.SameLine(0f, 18f);
+        var scd = config.SoundCooldownSeconds;
+        ImGui.SetNextItemWidth(100f);
+        if (ImGui.SliderInt("##scd", ref scd, 1, 30, "Sound CD %ds"))
+        {
+            config.SoundCooldownSeconds = scd;
+            changed = true;
+        }
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("Minimum seconds between repeated sound chimes for the same alert.");
+        }
+
         if (config.HasCustomBannerPosition || config.HasCustomMitPosition)
         {
             ImGui.SameLine(0f, 10f);
