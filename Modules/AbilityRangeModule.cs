@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Game.Gui;
 using Dalamud.Interface.Textures;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Component.GUI;
@@ -41,6 +42,12 @@ public sealed unsafe class AbilityRangeModule : IHelperModule
         new(37013, 37013, RangeOrigin.Self),
         new(37016, 37016, RangeOrigin.Self),
     ];
+
+    private static readonly Dictionary<uint, uint> ReplacementActionAliases = new()
+    {
+        [16550] = 16537,
+        [16551] = 16538,
+    };
 
     private static readonly Vector4 ColorTitle = new(0.95f, 0.84f, 0.45f, 1f);
     private static readonly Vector4 ColorInRange = new(0.55f, 0.90f, 0.60f, 1f);
@@ -137,11 +144,15 @@ public sealed unsafe class AbilityRangeModule : IHelperModule
         var detailPtr = gameGui.GetAddonByName("ActionDetail", 1);
         if (detailPtr == nint.Zero) return;
         var detailAddon = (AtkUnitBase*)detailPtr.Address;
-        if (detailAddon == null || !detailAddon->IsVisible) return;
+        if (detailAddon == null || !detailAddon->IsVisible || detailAddon->RootNode == null || !detailAddon->RootNode->IsVisible()) return;
 
         var hovered = gameGui.HoveredAction;
+        if (hovered.DetailKind != DetailKind.Action) return;
+
         var hoveredId = hovered.ActionId != 0 ? hovered.ActionId : hovered.BaseActionId;
-        if (hoveredId == 0 || !abilityByActionId.TryGetValue(hoveredId, out var ability)) return;
+        if (hoveredId == 0) return;
+        if (ReplacementActionAliases.TryGetValue(hoveredId, out var aliasedId)) hoveredId = aliasedId;
+        if (!abilityByActionId.TryGetValue(hoveredId, out var ability)) return;
         if (!config.IsRangeActionEnabled(ability.HotbarActionId) || state.Level < ability.UnlockLevel) return;
 
         if (!TryResolveOrigin(state, ability, out var originPos, out var deployHeader)) return;

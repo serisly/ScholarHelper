@@ -9,6 +9,7 @@ using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using NativeGameObject = FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using ScholarHelper.Rules;
@@ -65,7 +66,7 @@ public sealed unsafe class AlertEngine : IDisposable
     private readonly List<PartyMemberState> partyScratch = new(8);
     private readonly List<ActiveMitigation> mitScratch = new(12);
     private readonly HashSet<string> mitDedupScratch = new(StringComparer.Ordinal);
-    private readonly Dictionary<uint, (string Name, uint JobId)> raiserScratch = new(4);
+    private readonly Dictionary<ulong, (string Name, uint JobId)> raiserScratch = new(4);
 
     private uint cachedTerritoryId = uint.MaxValue;
     private bool cachedIsRaidOrTrial;
@@ -178,6 +179,14 @@ public sealed unsafe class AlertEngine : IDisposable
 
         try
         {
+            if (!config.Enabled)
+            {
+                State = FrameState.Empty;
+                soundWasActive.Clear();
+                lastEdgeKey.Clear();
+                return;
+            }
+
             var state = BuildFrameState();
             State = state;
 
@@ -185,11 +194,6 @@ public sealed unsafe class AlertEngine : IDisposable
             {
                 soundWasActive.Clear();
                 lastEdgeKey.Clear();
-                return;
-            }
-
-            if (!config.Enabled)
-            {
                 return;
             }
 
@@ -356,7 +360,7 @@ public sealed unsafe class AlertEngine : IDisposable
 
         if (config.EnableMitigationStrip)
         {
-            BuildMitigations(player, hostileNpc, focusObj as IBattleNpc);
+            BuildMitigations(player, hostileNpc);
         }
         else
         {
@@ -369,7 +373,7 @@ public sealed unsafe class AlertEngine : IDisposable
                      || condition[ConditionFlag.BoundByDuty56]
                      || condition[ConditionFlag.BoundByDuty95];
         UpdateTerritoryCache();
-        var isBossEnemyActive = HasActiveBossEnemy(inDuty, inCombat, hostileNpc);
+        var isBossEnemyActive = cachedIsDungeon && config.RemindersInDungeons && HasActiveBossEnemy(inDuty, inCombat, hostileNpc);
         var lowestGearPct = inCombat ? 100 : ReadLowestGearConditionPercent();
 
         return new FrameState
@@ -431,7 +435,9 @@ public sealed unsafe class AlertEngine : IDisposable
         if (obj is IBattleNpc npc
             && npc.BattleNpcKind is BattleNpcSubKind.Combatant or BattleNpcSubKind.BNpcPart
             && npc.IsTargetable
-            && npc.CurrentHp > 0)
+            && npc.CurrentHp > 0
+            && npc.Address != nint.Zero
+            && ActionManager.CanUseActionOnTarget(ScholarAlertRules.BioActionId, (NativeGameObject*)npc.Address))
         {
             return npc;
         }
@@ -517,17 +523,11 @@ public sealed unsafe class AlertEngine : IDisposable
         return lowest;
     }
 
-    private void BuildMitigations(IPlayerCharacter player, IBattleNpc? hostileTarget, IBattleNpc? focusTarget)
+    private void BuildMitigations(IPlayerCharacter player, IBattleNpc? boss)
     {
         mitScratch.Clear();
         mitDedupScratch.Clear();
 
-        var boss = hostileTarget
-                   ?? (focusTarget != null
-                       && focusTarget.BattleNpcKind is BattleNpcSubKind.Combatant or BattleNpcSubKind.BNpcPart
-                       && focusTarget.CurrentHp > 0
-                           ? focusTarget
-                           : null);
         if (boss != null)
         {
             foreach (var st in boss.StatusList)
@@ -592,7 +592,7 @@ public sealed unsafe class AlertEngine : IDisposable
         {
             if (m.GameObject is IBattleChara bc && bc.IsCasting && ScholarAlertRules.IsRaiseSpell(bc.CastActionId))
             {
-                raiserScratch[(uint)bc.CastTargetObjectId] = (m.Name.TextValue, m.ClassJob.RowId);
+                raiserScratch[bc.CastTargetObjectId] = (m.Name.TextValue, m.ClassJob.RowId);
             }
         }
 
@@ -609,7 +609,7 @@ public sealed unsafe class AlertEngine : IDisposable
             uint raiserJob = 0;
             if (m.CurrentHP == 0)
             {
-                if (raiserScratch.TryGetValue(m.EntityId, out var r) || raiserScratch.TryGetValue((uint)goId, out r))
+                if (raiserScratch.TryGetValue(goId, out var r) || raiserScratch.TryGetValue(m.EntityId, out r))
                 {
                     raiserName = r.Name;
                     raiserJob = r.JobId;

@@ -24,6 +24,7 @@ public sealed class SettingsWindow : Window
     private readonly IReadOnlyList<IHelperModule> modules;
 
     private bool overlaysUnlocked;
+    private bool configDirty;
 
     public SettingsWindow(
         IDalamudPluginInterface pluginInterface,
@@ -52,7 +53,15 @@ public sealed class SettingsWindow : Window
         SizeCondition = ImGuiCond.FirstUseEver;
     }
 
-    public override void OnClose() => SetOverlaysUnlocked(false);
+    public override void OnClose()
+    {
+        SetOverlaysUnlocked(false);
+        if (configDirty)
+        {
+            config.Save(pluginInterface);
+            configDirty = false;
+        }
+    }
 
     private void SetOverlaysUnlocked(bool unlocked)
     {
@@ -152,6 +161,9 @@ public sealed class SettingsWindow : Window
             if (ImGui.Button("Reset Positions"))
             {
                 config.ResetPositions();
+                bannerOverlay.ForceSnapPosition();
+                mitStripModule.ForceSnapPosition();
+                slidecastBarModule.ForceSnapPosition();
                 changed = true;
             }
             ImGui.SameLine(0f, 8f);
@@ -161,6 +173,9 @@ public sealed class SettingsWindow : Window
         {
             config.ResetModuleDefaults();
             alertEngine.ResetAllRuleConfigs();
+            bannerOverlay.ForceSnapPosition();
+            mitStripModule.ForceSnapPosition();
+            slidecastBarModule.ForceSnapPosition();
             SetOverlaysUnlocked(false);
             changed = true;
         }
@@ -190,7 +205,12 @@ public sealed class SettingsWindow : Window
 
         ImGui.PopStyleVar(2);
 
-        if (changed) config.Save(pluginInterface);
+        if (changed) configDirty = true;
+        if (configDirty && !ImGui.IsAnyItemActive())
+        {
+            config.Save(pluginInterface);
+            configDirty = false;
+        }
     }
 
     private bool DrawAlertsTable()

@@ -94,7 +94,7 @@ public static unsafe class PartyListGeometry
         return true;
     }
 
-    private static bool TryGetNodeScreenRect(AtkUnitBase* addon, AtkResNode* node, out Vector2 min, out Vector2 max)
+    public static bool TryGetNodeScreenRect(AtkUnitBase* addon, AtkResNode* node, out Vector2 min, out Vector2 max)
     {
         min = Vector2.Zero;
         max = Vector2.Zero;

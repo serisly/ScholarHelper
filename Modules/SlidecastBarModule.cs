@@ -3,7 +3,9 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.Game;
 using Lumina.Excel;
+using Lumina.Excel.Sheets;
 using ScholarHelper.Core;
 using ScholarHelper.UI;
 
@@ -24,6 +26,12 @@ public sealed class SlidecastBarModule : IHelperModule
     private readonly IObjectTable objectTable;
     private readonly Configuration config;
     private readonly ExcelSheet<Lumina.Excel.Sheets.Action>? actionSheet;
+    private readonly ExcelSheet<Item>? itemSheet;
+    private readonly ExcelSheet<GeneralAction>? generalActionSheet;
+    private readonly ExcelSheet<Mount>? mountSheet;
+
+    private bool isDragging;
+    private bool forceSnapNextFrame;
 
     public bool IsPositionUnlocked { get; set; }
 
@@ -41,9 +49,14 @@ public sealed class SlidecastBarModule : IHelperModule
         this.objectTable = objectTable;
         this.config = config;
         actionSheet = dataManager.GetExcelSheet<Lumina.Excel.Sheets.Action>();
+        itemSheet = dataManager.GetExcelSheet<Item>();
+        generalActionSheet = dataManager.GetExcelSheet<GeneralAction>();
+        mountSheet = dataManager.GetExcelSheet<Mount>();
     }
 
     public void Enable() { }
+
+    public void ForceSnapPosition() => forceSnapNextFrame = true;
 
     public void DrawOverlay()
     {
@@ -58,15 +71,18 @@ public sealed class SlidecastBarModule : IHelperModule
         var windowSec = Math.Clamp(config.SlidecastWindowMs, 200, 800) / 1000f;
 
         var vp = ImGui.GetMainViewport();
+        var posCond = (!IsPositionUnlocked || forceSnapNextFrame) ? ImGuiCond.Always : ImGuiCond.Appearing;
+        forceSnapNextFrame = false;
+
         if (config.HasCustomCastBarPosition)
         {
             var pos = new Vector2(vp.Pos.X + config.CastBarPosX, vp.Pos.Y + config.CastBarPosY);
-            ImGui.SetNextWindowPos(pos, IsPositionUnlocked ? ImGuiCond.Appearing : ImGuiCond.Always);
+            ImGui.SetNextWindowPos(pos, posCond);
         }
         else
         {
             var pos = new Vector2(vp.Pos.X + (vp.Size.X * 0.5f), vp.Pos.Y + (vp.Size.Y * 0.72f));
-            ImGui.SetNextWindowPos(pos, IsPositionUnlocked ? ImGuiCond.Appearing : ImGuiCond.Always, new Vector2(0.5f, 0.5f));
+            ImGui.SetNextWindowPos(pos, posCond, new Vector2(0.5f, 0.5f));
         }
 
         ImGui.SetNextWindowSize(new Vector2(width, height), ImGuiCond.Always);
@@ -81,12 +97,25 @@ public sealed class SlidecastBarModule : IHelperModule
 
         if (ImGui.Begin("ScholarHelperSlidecastBar###SCHSlidecastBar", flags))
         {
-            if (IsPositionUnlocked && ImGui.IsWindowHovered() && ImGui.IsMouseDragging(ImGuiMouseButton.Left))
+            if (IsPositionUnlocked)
             {
-                var winPos = ImGui.GetWindowPos();
-                config.HasCustomCastBarPosition = true;
-                config.CastBarPosX = winPos.X - vp.Pos.X;
-                config.CastBarPosY = winPos.Y - vp.Pos.Y;
+                if (ImGui.IsWindowHovered() && ImGui.IsMouseDragging(ImGuiMouseButton.Left))
+                {
+                    var winPos = ImGui.GetWindowPos();
+                    config.HasCustomCastBarPosition = true;
+                    config.CastBarPosX = winPos.X - vp.Pos.X;
+                    config.CastBarPosY = winPos.Y - vp.Pos.Y;
+                    isDragging = true;
+                }
+                else if (isDragging && !ImGui.IsMouseDown(ImGuiMouseButton.Left))
+                {
+                    isDragging = false;
+                    config.Save(pluginInterface);
+                }
+            }
+            else if (isDragging)
+            {
+                isDragging = false;
                 config.Save(pluginInterface);
             }
 
@@ -105,8 +134,7 @@ public sealed class SlidecastBarModule : IHelperModule
                 var current = Math.Clamp(player.CurrentCastTime, 0f, totalSec);
                 remainingSec = MathF.Max(0f, totalSec - current);
                 progress = Math.Clamp(current / totalSec, 0f, 1f);
-                var row = actionSheet?.GetRowOrDefault(player.CastActionId);
-                spellName = row.HasValue ? row.Value.Name.ExtractText() : "Casting";
+                spellName = ResolveCastName((ActionType)player.CastActionType, player.CastActionId);
             }
             else
             {
@@ -143,12 +171,30 @@ public sealed class SlidecastBarModule : IHelperModule
             var timerSize = ImGui.CalcTextSize(timerText);
             var timerPos = new Vector2(pMax.X - timerSize.X - 8f, textY);
 
+            var clipRight = MathF.Max(namePos.X, timerPos.X - 6f);
+            draw.PushClipRect(pMin, new Vector2(clipRight, pMax.Y), true);
             DrawShadowedText(draw, namePos, spellName);
+            draw.PopClipRect();
+
             DrawShadowedText(draw, timerPos, timerText);
         }
 
         ImGui.End();
         ImGui.PopStyleVar(2);
+    }
+
+    private string ResolveCastName(ActionType castType, uint actionId)
+    {
+        var name = castType switch
+        {
+            ActionType.Action => actionSheet?.GetRowOrDefault(actionId)?.Name.ExtractText(),
+            ActionType.Item => itemSheet?.GetRowOrDefault(actionId >= 1_000_000 ? actionId - 1_000_000 : actionId)?.Name.ExtractText(),
+            ActionType.GeneralAction => generalActionSheet?.GetRowOrDefault(actionId)?.Name.ExtractText(),
+            ActionType.Mount => mountSheet?.GetRowOrDefault(actionId)?.Singular.ExtractText(),
+            _ => null,
+        };
+
+        return string.IsNullOrWhiteSpace(name) ? "Casting" : name;
     }
 
     private static void DrawShadowedText(ImDrawListPtr draw, Vector2 pos, string text)

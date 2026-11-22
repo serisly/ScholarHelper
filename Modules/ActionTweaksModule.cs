@@ -5,6 +5,7 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Hooking;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using ScholarHelper.Core;
 
@@ -32,6 +33,7 @@ public sealed unsafe class ActionTweaksModule : IHelperModule
     private readonly HashSet<uint> friendlySingleTargetActionIds = new();
 
     private Hook<UseActionDelegate>? hook;
+    private bool hasLoggedDetourError;
 
     public string Id => "action_tweaks";
     public string DisplayName => "Actions";
@@ -125,46 +127,59 @@ public sealed unsafe class ActionTweaksModule : IHelperModule
     {
         if (config.Enabled && actionType == ActionType.Action && mode == ActionManager.UseActionMode.None)
         {
-            var adjustedId = actionManager != null ? actionManager->GetAdjustedActionId(actionId) : actionId;
-
-            if (config.SacredSoilAtSelf && (actionId == SacredSoilActionId || adjustedId == SacredSoilActionId))
+            try
             {
-                var player = objectTable.LocalPlayer;
-                if (player != null && actionManager != null)
+                var adjustedId = actionManager != null ? actionManager->GetAdjustedActionId(actionId) : actionId;
+
+                if (config.SacredSoilAtSelf && (actionId == SacredSoilActionId || adjustedId == SacredSoilActionId))
                 {
-                    if (outOptAreaTargeted != null) *outOptAreaTargeted = 0;
-                    var pos = player.Position;
-                    return actionManager->UseActionLocation(
-                        ActionType.Action,
-                        SacredSoilActionId,
-                        player.GameObjectId,
-                        &pos,
-                        extraParam)
-                        ? (byte)1
-                        : (byte)0;
+                    var player = objectTable.LocalPlayer;
+                    if (player != null && actionManager != null)
+                    {
+                        if (outOptAreaTargeted != null) *outOptAreaTargeted = 0;
+                        var pos = player.Position;
+                        return actionManager->UseActionLocation(
+                            ActionType.Action,
+                            SacredSoilActionId,
+                            player.GameObjectId,
+                            &pos,
+                            extraParam)
+                            ? (byte)1
+                            : (byte)0;
+                    }
+                }
+
+                if (config.MouseoverPartyHealing
+                    && (friendlySingleTargetActionIds.Contains(adjustedId) || friendlySingleTargetActionIds.Contains(actionId)))
+                {
+                    var pronoun = PronounModule.Instance();
+                    var moObj = pronoun != null ? pronoun->UiMouseOverTarget : null;
+                    if (moObj != null
+                        && moObj->ObjectKind == ObjectKind.Pc
+                        && ActionManager.CanUseActionOnTarget(adjustedId, moObj))
+                    {
+                        var moId = (ulong)moObj->GetGameObjectId();
+                        if (moId != 0 && moId != 0xE0000000)
+                        {
+                            return hook!.Original(
+                                actionManager,
+                                actionType,
+                                actionId,
+                                moId,
+                                extraParam,
+                                mode,
+                                comboRouteId,
+                                outOptAreaTargeted);
+                        }
+                    }
                 }
             }
-
-            if (config.MouseoverPartyHealing
-                && (friendlySingleTargetActionIds.Contains(adjustedId) || friendlySingleTargetActionIds.Contains(actionId)))
+            catch (Exception ex)
             {
-                var pronoun = PronounModule.Instance();
-                var moObj = pronoun != null ? pronoun->UiMouseOverTarget : null;
-                if (moObj != null)
+                if (!hasLoggedDetourError)
                 {
-                    var moId = (ulong)moObj->GetGameObjectId();
-                    if (moId != 0 && moId != 0xE0000000)
-                    {
-                        return hook!.Original(
-                            actionManager,
-                            actionType,
-                            actionId,
-                            moId,
-                            extraParam,
-                            mode,
-                            comboRouteId,
-                            outOptAreaTargeted);
-                    }
+                    hasLoggedDetourError = true;
+                    log.Warning(ex, "Skipped Scholar Helper UseAction redirect.");
                 }
             }
         }

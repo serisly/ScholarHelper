@@ -28,8 +28,12 @@ public sealed class ActiveMitigationStripModule : IHelperModule
     private readonly ITextureProvider textureProvider;
     private readonly AlertEngine alertEngine;
     private readonly Configuration config;
+    private bool isDragging;
+    private bool forceSnapNextFrame;
 
     public bool IsPositionUnlocked { get; set; }
+
+    public void ForceSnapPosition() => forceSnapNextFrame = true;
 
     public string Id => "active_mitigation_strip";
     public string DisplayName => "Active Raid Mitigation Strip";
@@ -61,20 +65,23 @@ public sealed class ActiveMitigationStripModule : IHelperModule
         if (!IsPositionUnlocked && !hasLive) return;
 
         var vp = ImGui.GetMainViewport();
+        var posCond = (!IsPositionUnlocked || forceSnapNextFrame) ? ImGuiCond.Always : ImGuiCond.Appearing;
+        forceSnapNextFrame = false;
+
         if (config.HasCustomMitPosition)
         {
             var pos = new Vector2(vp.Pos.X + config.MitPosX, vp.Pos.Y + config.MitPosY);
-            ImGui.SetNextWindowPos(pos, IsPositionUnlocked ? ImGuiCond.Appearing : ImGuiCond.Always);
+            ImGui.SetNextWindowPos(pos, posCond);
         }
         else if (PartyListGeometry.TryGetPartyBounds(gameGui, out var pMin, out var pMax))
         {
             var pos = new Vector2(vp.Pos.X + pMin.X, vp.Pos.Y + pMax.Y + 6f);
-            ImGui.SetNextWindowPos(pos, IsPositionUnlocked ? ImGuiCond.Appearing : ImGuiCond.Always);
+            ImGui.SetNextWindowPos(pos, posCond);
         }
         else
         {
             var pos = new Vector2(vp.Pos.X + 28f, vp.Pos.Y + (vp.Size.Y * 0.45f));
-            ImGui.SetNextWindowPos(pos, IsPositionUnlocked ? ImGuiCond.Appearing : ImGuiCond.Always);
+            ImGui.SetNextWindowPos(pos, posCond);
         }
 
         var flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoScrollbar
@@ -98,10 +105,20 @@ public sealed class ActiveMitigationStripModule : IHelperModule
                     config.HasCustomMitPosition = true;
                     config.MitPosX = winPos.X - vp.Pos.X;
                     config.MitPosY = winPos.Y - vp.Pos.Y;
+                    isDragging = true;
+                }
+                else if (isDragging && !ImGui.IsMouseDown(ImGuiMouseButton.Left))
+                {
+                    isDragging = false;
                     config.Save(pluginInterface);
                 }
 
                 ImGui.TextColored(ColorUnlockBorder, "Mitigation Strip");
+            }
+            else if (isDragging)
+            {
+                isDragging = false;
+                config.Save(pluginInterface);
             }
 
             if (hasLive)
@@ -165,6 +182,7 @@ public sealed class ActiveMitigationStripModule : IHelperModule
                 config.HasCustomMitPosition = false;
                 config.MitPosX = 0f;
                 config.MitPosY = 0f;
+                ForceSnapPosition();
                 changed = true;
             }
         }

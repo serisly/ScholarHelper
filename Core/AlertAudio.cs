@@ -7,7 +7,7 @@ using FFXIVClientStructs.FFXIV.Client.UI;
 
 namespace ScholarHelper.Core;
 
-public static class SoundEffects
+public static unsafe class SoundEffects
 {
     public const int GameMinId = 1;
     public const int GameMaxId = 16;
@@ -177,7 +177,11 @@ public static class SoundEffects
         };
 
         nint hWaveOut = 0;
-        GCHandle pin = default;
+        var hdrPtr = (WaveHdr*)null;
+        var pcmPtr = nint.Zero;
+        var prepared = false;
+        var hdrSize = (uint)sizeof(WaveHdr);
+
         try
         {
             if (waveOutOpen(out hWaveOut, WaveMapper, ref fmt, 0, 0, 0) != 0 || hWaveOut == 0)
@@ -185,34 +189,45 @@ public static class SoundEffects
                 return;
             }
 
-            pin = GCHandle.Alloc(pcm, GCHandleType.Pinned);
-            var hdr = new WaveHdr
+            pcmPtr = Marshal.AllocHGlobal(pcm.Length);
+            Marshal.Copy(pcm, 0, pcmPtr, pcm.Length);
+
+            hdrPtr = (WaveHdr*)NativeMemory.AllocZeroed(hdrSize);
+            hdrPtr->Data = pcmPtr;
+            hdrPtr->BufferLength = (uint)pcm.Length;
+
+            if (waveOutPrepareHeader(hWaveOut, hdrPtr, hdrSize) != 0)
             {
-                Data = pin.AddrOfPinnedObject(),
-                BufferLength = (uint)pcm.Length,
-            };
+                return;
+            }
+            prepared = true;
 
-            var hdrSize = (uint)Marshal.SizeOf<WaveHdr>();
-            if (waveOutPrepareHeader(hWaveOut, ref hdr, hdrSize) != 0) return;
-
-            if (waveOutWrite(hWaveOut, ref hdr, hdrSize) == 0)
+            if (waveOutWrite(hWaveOut, hdrPtr, hdrSize) == 0)
             {
                 var deadline = Environment.TickCount64 + 1500;
-                while ((hdr.Flags & WhdrDone) == 0 && Environment.TickCount64 < deadline)
+                while ((Volatile.Read(ref hdrPtr->Flags) & WhdrDone) == 0 && Environment.TickCount64 < deadline)
                 {
                     Thread.Sleep(10);
                 }
             }
-
-            waveOutUnprepareHeader(hWaveOut, ref hdr, hdrSize);
         }
         catch
         {
         }
         finally
         {
-            if (hWaveOut != 0) waveOutClose(hWaveOut);
-            if (pin.IsAllocated) pin.Free();
+            if (hWaveOut != 0)
+            {
+                waveOutReset(hWaveOut);
+                if (prepared && hdrPtr != null)
+                {
+                    waveOutUnprepareHeader(hWaveOut, hdrPtr, hdrSize);
+                }
+                waveOutClose(hWaveOut);
+            }
+
+            if (hdrPtr != null) NativeMemory.Free(hdrPtr);
+            if (pcmPtr != nint.Zero) Marshal.FreeHGlobal(pcmPtr);
         }
     }
 
@@ -245,13 +260,16 @@ public static class SoundEffects
     private static extern uint waveOutOpen(out nint hWaveOut, uint deviceId, ref WaveFormatEx format, nint callback, nint instance, uint flags);
 
     [DllImport("winmm.dll")]
-    private static extern uint waveOutPrepareHeader(nint hWaveOut, ref WaveHdr header, uint size);
+    private static extern uint waveOutPrepareHeader(nint hWaveOut, WaveHdr* header, uint size);
 
     [DllImport("winmm.dll")]
-    private static extern uint waveOutWrite(nint hWaveOut, ref WaveHdr header, uint size);
+    private static extern uint waveOutWrite(nint hWaveOut, WaveHdr* header, uint size);
 
     [DllImport("winmm.dll")]
-    private static extern uint waveOutUnprepareHeader(nint hWaveOut, ref WaveHdr header, uint size);
+    private static extern uint waveOutReset(nint hWaveOut);
+
+    [DllImport("winmm.dll")]
+    private static extern uint waveOutUnprepareHeader(nint hWaveOut, WaveHdr* header, uint size);
 
     [DllImport("winmm.dll")]
     private static extern uint waveOutClose(nint hWaveOut);

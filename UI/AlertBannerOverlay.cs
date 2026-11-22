@@ -21,8 +21,12 @@ public sealed class AlertBannerOverlay : Window
     private readonly ITextureProvider textureProvider;
     private readonly AlertEngine alertEngine;
     private readonly Configuration config;
+    private bool isDragging;
+    private bool forceSnapNextFrame;
 
     public bool IsPositionUnlocked { get; set; }
+
+    public void ForceSnapPosition() => forceSnapNextFrame = true;
 
     public AlertBannerOverlay(
         IDalamudPluginInterface pluginInterface,
@@ -52,15 +56,18 @@ public sealed class AlertBannerOverlay : Window
         if (!IsPositionUnlocked) Flags |= ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoInputs;
 
         var vp = ImGui.GetMainViewport();
+        var posCond = (!IsPositionUnlocked || forceSnapNextFrame) ? ImGuiCond.Always : ImGuiCond.Appearing;
+        forceSnapNextFrame = false;
+
         if (config.HasCustomBannerPosition)
         {
             var pos = new Vector2(vp.Pos.X + config.BannerPosX, vp.Pos.Y + config.BannerPosY);
-            ImGui.SetNextWindowPos(pos, IsPositionUnlocked ? ImGuiCond.Appearing : ImGuiCond.Always);
+            ImGui.SetNextWindowPos(pos, posCond);
         }
         else
         {
             var pos = new Vector2(vp.Pos.X + (vp.Size.X * 0.5f), vp.Pos.Y + (vp.Size.Y * 0.21f));
-            ImGui.SetNextWindowPos(pos, IsPositionUnlocked ? ImGuiCond.Appearing : ImGuiCond.Always, new Vector2(0.5f, 0f));
+            ImGui.SetNextWindowPos(pos, posCond, new Vector2(0.5f, 0f));
         }
 
         var accent = IsPositionUnlocked
@@ -91,6 +98,11 @@ public sealed class AlertBannerOverlay : Window
                 config.HasCustomBannerPosition = true;
                 config.BannerPosX = winPos.X - vp.Pos.X;
                 config.BannerPosY = winPos.Y - vp.Pos.Y;
+                isDragging = true;
+            }
+            else if (isDragging && !ImGui.IsMouseDown(ImGuiMouseButton.Left))
+            {
+                isDragging = false;
                 config.Save(pluginInterface);
             }
 
@@ -108,6 +120,11 @@ public sealed class AlertBannerOverlay : Window
             }
 
             ImGui.Separator();
+        }
+        else if (isDragging)
+        {
+            isDragging = false;
+            config.Save(pluginInterface);
         }
 
         var banners = alertEngine.ActiveBanners;

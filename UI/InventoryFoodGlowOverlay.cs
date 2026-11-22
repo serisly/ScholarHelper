@@ -164,29 +164,11 @@ public sealed unsafe class InventoryFoodGlowOverlay
         max = Vector2.Zero;
         var node = addon->GetNodeById(nodeId);
         if (node == null || !node->IsVisible()) return false;
+        if (!PartyListGeometry.TryGetNodeScreenRect(addon, node, out var rawMin, out var rawMax)) return false;
 
-        var scale = addon->Scale > 0.01f ? addon->Scale : 1f;
-        var x = 0f;
-        var y = 0f;
-        var sx = 1f;
-        var sy = 1f;
-        var cur = node;
-        while (cur != null && cur != addon->RootNode)
-        {
-            x += cur->X;
-            y += cur->Y;
-            sx *= cur->ScaleX;
-            sy *= cur->ScaleY;
-            cur = cur->ParentNode;
-        }
-
-        var w = node->Width * sx * scale;
-        var h = node->Height * sy * scale;
-        if (w < 8f || h < 8f) return false;
-
-        min = new Vector2(vpPos.X + addon->X + (x * scale), vpPos.Y + addon->Y + (y * scale));
-        max = new Vector2(min.X + w, min.Y + h);
-        return true;
+        min = vpPos + rawMin;
+        max = vpPos + rawMax;
+        return (max.X - min.X) >= 8f && (max.Y - min.Y) >= 8f;
     }
 
     private static void CollectHigherZRects(AtkUnitBase* targetAddon, Vector2 vpPos, Vector2 vpSize, List<(Vector2 Min, Vector2 Max)> output)
