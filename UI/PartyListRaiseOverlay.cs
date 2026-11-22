@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
@@ -29,12 +30,14 @@ public sealed class PartyListRaiseOverlay
     public void Draw()
     {
         if (!config.Enabled) return;
-        if (!config.RuleConfigs.TryGetValue(ScholarAlertRules.RaiseTrackerRuleId, out var raiseCfg)
-            || !raiseCfg.Enabled
-            || !raiseCfg.Flag)
+        if (!config.RuleConfigs.TryGetValue(ScholarAlertRules.RaiseTrackerRuleId, out var raiseCfg) || !raiseCfg.Enabled)
         {
             return;
         }
+
+        var showTags = raiseCfg.Flag;
+        var showRowGlow = raiseCfg.EnableGlow;
+        if (!showTags && !showRowGlow) return;
 
         var state = alertEngine.State;
         if (!state.IsLoggedIn
@@ -49,17 +52,38 @@ public sealed class PartyListRaiseOverlay
 
         var vp = ImGui.GetMainViewport();
         var draw = ImGui.GetForegroundDrawList(vp);
+        var pulse = 0.65f + (0.35f * MathF.Sin((float)ImGui.GetTime() * 6f));
+        var rowGlowBorder = ImGui.ColorConvertFloat4ToU32(new Vector4(1.00f, 0.42f, 0.36f, pulse));
+        var rowGlowFill = ImGui.ColorConvertFloat4ToU32(new Vector4(1.00f, 0.36f, 0.30f, 0.14f * pulse));
 
         foreach (var row in rowScratch)
         {
             if (!PartyListGeometry.TryMatchMember(state.Party, row, out var m) || !m.IsDead || m.IsLocalPlayer) continue;
 
-            var x = vp.Pos.X + row.Max.X + 6f;
-            var centerY = vp.Pos.Y + ((row.Min.Y + row.Max.Y) * 0.5f);
+            var min = new Vector2(vp.Pos.X + row.Min.X, vp.Pos.Y + row.Min.Y);
+            var max = new Vector2(vp.Pos.X + row.Max.X, vp.Pos.Y + row.Max.Y);
 
-            if (m.RaisingByName != null) PartyListGeometry.DrawRowPill(draw, x, centerY, "RAISING", BgDark, ColMint);
-            else if (m.HasPendingRaise) PartyListGeometry.DrawRowPill(draw, x, centerY, "PENDING", BgDark, ColGold);
-            else PartyListGeometry.DrawRowPill(draw, x, centerY, "NEEDS RAISE", BgDark, ColCoral);
+            if (m.RaisingByName != null)
+            {
+                if (showTags) PartyListGeometry.DrawRowPill(draw, max.X + 6f, (min.Y + max.Y) * 0.5f, "RAISING", BgDark, ColMint);
+            }
+            else if (m.HasPendingRaise)
+            {
+                if (showTags) PartyListGeometry.DrawRowPill(draw, max.X + 6f, (min.Y + max.Y) * 0.5f, "PENDING", BgDark, ColGold);
+            }
+            else if (m.IsRaisable)
+            {
+                if (showRowGlow)
+                {
+                    draw.AddRectFilled(min, max, rowGlowFill, 3f);
+                    draw.AddRect(min, max, rowGlowBorder, 3f, ImDrawFlags.None, 2f);
+                }
+
+                if (showTags)
+                {
+                    PartyListGeometry.DrawRowPill(draw, max.X + 6f, (min.Y + max.Y) * 0.5f, "NEEDS RAISE", BgDark, ColCoral);
+                }
+            }
         }
     }
 }

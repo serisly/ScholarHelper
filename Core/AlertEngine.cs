@@ -18,6 +18,7 @@ namespace ScholarHelper.Core;
 public sealed unsafe class AlertEngine : IDisposable
 {
     private const uint WellFedStatusId = 48;
+    private const uint MealItemCategoryId = 46;
     private const uint DissipationStatusId = 791;
     private const uint DissipationAltStatusId = 2069;
     private const uint BioStatusId = 179;
@@ -53,10 +54,12 @@ public sealed unsafe class AlertEngine : IDisposable
     private readonly IReadOnlyList<AlertRule> rules;
     private readonly ExcelSheet<TerritoryType>? territorySheet;
     private readonly ExcelSheet<BNpcBase>? bnpcBaseSheet;
+    private readonly ExcelSheet<Item>? itemSheet;
+    private readonly HashSet<uint> mealItemIds = new();
 
     private readonly HashSet<HotbarGlowTarget> activeGlows = new();
     private readonly List<AlertBannerLine> activeBanners = new();
-    private readonly Dictionary<string, bool> wasActive = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, bool> soundWasActive = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string?> lastEdgeKey = new(StringComparer.Ordinal);
     private readonly Dictionary<string, DateTime> lastSoundUtc = new(StringComparer.Ordinal);
     private readonly List<PartyMemberState> partyScratch = new(8);
@@ -71,6 +74,7 @@ public sealed unsafe class AlertEngine : IDisposable
 
     public IReadOnlyList<AlertRule> Rules => rules;
     public IReadOnlyList<AlertBannerLine> ActiveBanners => activeBanners;
+    public bool IsFoodGlowActive { get; private set; }
     public FrameState State { get; private set; } = FrameState.Empty;
 
     public AlertEngine(
@@ -101,8 +105,30 @@ public sealed unsafe class AlertEngine : IDisposable
 
         territorySheet = dataManager.GetExcelSheet<TerritoryType>();
         bnpcBaseSheet = dataManager.GetExcelSheet<BNpcBase>();
+        itemSheet = dataManager.GetExcelSheet<Item>();
+        CacheMealItems();
 
         EnsureRuleConfigs();
+    }
+
+    private void CacheMealItems()
+    {
+        if (itemSheet == null) return;
+        foreach (var item in itemSheet)
+        {
+            if (item.ItemUICategory.RowId != MealItemCategoryId) continue;
+            var act = item.ItemAction.ValueNullable;
+            if (act.HasValue && act.Value.Data[0] == WellFedStatusId)
+            {
+                mealItemIds.Add(item.RowId);
+            }
+        }
+    }
+
+    public bool IsMealItem(uint itemId)
+    {
+        var baseId = itemId >= 1_000_000 ? itemId - 1_000_000 : itemId;
+        return mealItemIds.Contains(baseId);
     }
 
     public void EnsureRuleConfigs()
@@ -147,6 +173,7 @@ public sealed unsafe class AlertEngine : IDisposable
     {
         activeGlows.Clear();
         activeBanners.Clear();
+        IsFoodGlowActive = false;
 
         try
         {
@@ -155,7 +182,7 @@ public sealed unsafe class AlertEngine : IDisposable
 
             if (!state.IsLoggedIn)
             {
-                wasActive.Clear();
+                soundWasActive.Clear();
                 lastEdgeKey.Clear();
                 return;
             }
@@ -175,7 +202,7 @@ public sealed unsafe class AlertEngine : IDisposable
                     || (rule.RequireAlive && !state.IsAlive)
                     || (rule.ScholarOnly && !state.IsScholar && !(rule.AllowAllJobsOption && cfg.AllJobs)))
                 {
-                    wasActive[rule.Id] = false;
+                    soundWasActive[rule.Id] = false;
                     lastEdgeKey[rule.Id] = null;
                     continue;
                 }
@@ -183,16 +210,24 @@ public sealed unsafe class AlertEngine : IDisposable
                 var eval = rule.Evaluate(state, cfg);
                 if (!eval.IsActive)
                 {
-                    wasActive[rule.Id] = false;
+                    soundWasActive[rule.Id] = false;
                     lastEdgeKey[rule.Id] = null;
                     continue;
                 }
 
-                if ((rule.Capabilities & AlertCapabilities.Glow) != 0 && cfg.EnableGlow && eval.Glows != null)
+                if ((rule.Capabilities & AlertCapabilities.Glow) != 0 && cfg.EnableGlow)
                 {
-                    foreach (var g in eval.Glows)
+                    if (eval.Glows != null)
                     {
-                        activeGlows.Add(g);
+                        foreach (var g in eval.Glows)
+                        {
+                            activeGlows.Add(g);
+                        }
+                    }
+
+                    if (eval.GlowMeals)
+                    {
+                        IsFoodGlowActive = true;
                     }
                 }
 
@@ -201,23 +236,31 @@ public sealed unsafe class AlertEngine : IDisposable
                     activeBanners.AddRange(eval.Banners);
                 }
 
-                var prevActive = wasActive.GetValueOrDefault(rule.Id, false);
-                var prevKey = lastEdgeKey.GetValueOrDefault(rule.Id, null);
-                var keyChanged = eval.EdgeKey != null && !string.Equals(eval.EdgeKey, prevKey, StringComparison.Ordinal);
-
-                if ((rule.Capabilities & AlertCapabilities.Sound) != 0 && cfg.EnableSound && (!prevActive || keyChanged))
+                if (eval.SuppressSound)
                 {
-                    var cd = Math.Clamp(config.SoundCooldownSeconds, 1, 30);
-                    var last = lastSoundUtc.GetValueOrDefault(rule.Id, DateTime.MinValue);
-                    if ((now - last).TotalSeconds >= cd)
-                    {
-                        SoundEffects.Play(cfg.SoundId);
-                        lastSoundUtc[rule.Id] = now;
-                    }
+                    soundWasActive[rule.Id] = false;
+                    lastEdgeKey[rule.Id] = null;
                 }
+                else
+                {
+                    var prevSoundActive = soundWasActive.GetValueOrDefault(rule.Id, false);
+                    var prevKey = lastEdgeKey.GetValueOrDefault(rule.Id, null);
+                    var keyChanged = eval.EdgeKey != null && !string.Equals(eval.EdgeKey, prevKey, StringComparison.Ordinal);
 
-                wasActive[rule.Id] = true;
-                lastEdgeKey[rule.Id] = eval.EdgeKey;
+                    if ((rule.Capabilities & AlertCapabilities.Sound) != 0 && cfg.EnableSound && (!prevSoundActive || keyChanged))
+                    {
+                        var cd = Math.Clamp(config.SoundCooldownSeconds, 1, 30);
+                        var last = lastSoundUtc.GetValueOrDefault(rule.Id, DateTime.MinValue);
+                        if ((now - last).TotalSeconds >= cd)
+                        {
+                            SoundEffects.Play(cfg.SoundId);
+                            lastSoundUtc[rule.Id] = now;
+                        }
+                    }
+
+                    soundWasActive[rule.Id] = true;
+                    lastEdgeKey[rule.Id] = eval.EdgeKey;
+                }
             }
 
             if (activeBanners.Count > 1)
@@ -329,6 +372,7 @@ public sealed unsafe class AlertEngine : IDisposable
                      || condition[ConditionFlag.BoundByDuty56]
                      || condition[ConditionFlag.BoundByDuty95];
         var isBossEncounter = IsCurrentBossEncounter(inDuty, inCombat, hostileNpc);
+        var lowestGearPct = inCombat ? 100 : ReadLowestGearConditionPercent();
 
         return new FrameState
         {
@@ -362,6 +406,7 @@ public sealed unsafe class AlertEngine : IDisposable
             HasFocusTarget = focusObj != null,
             HasFoodBuff = hasFood,
             FoodRemainingMinutes = foodMinutes,
+            LowestGearConditionPercent = lowestGearPct,
             AetherflowStacks = afStacks,
             FairyGauge = feyGauge,
             SeraphTimer = seraphTimer,
@@ -427,6 +472,33 @@ public sealed unsafe class AlertEngine : IDisposable
         return row.HasValue && row.Value.Rank is 2 or 6;
     }
 
+    private int ReadLowestGearConditionPercent()
+    {
+        var invMgr = InventoryManager.Instance();
+        if (invMgr == null) return 100;
+
+        var equipped = invMgr->GetInventoryContainer(InventoryType.EquippedItems);
+        if (equipped == null || !equipped->IsLoaded) return 100;
+
+        var lowest = 100;
+        for (var i = 0; i < equipped->Size; i++)
+        {
+            var slot = equipped->GetInventorySlot(i);
+            if (slot == null || slot->ItemId == 0) continue;
+
+            if (itemSheet != null)
+            {
+                var row = itemSheet.GetRowOrDefault(slot->ItemId);
+                if (row.HasValue && row.Value.ClassJobRepair.RowId == 0) continue;
+            }
+
+            var pct = Math.Clamp(slot->Condition / 300, 0, 100);
+            if (pct < lowest) lowest = pct;
+        }
+
+        return lowest;
+    }
+
     private void BuildMitigations(IPlayerCharacter player, IBattleNpc? hostileTarget, IBattleNpc? focusTarget)
     {
         mitScratch.Clear();
@@ -489,6 +561,7 @@ public sealed unsafe class AlertEngine : IDisposable
                 Position: localPlayer.Position,
                 IsLocalPlayer: true,
                 IsDead: localPlayer.CurrentHp == 0,
+                IsRaisable: false,
                 HasPendingRaise: HasStatus(localPlayer.StatusList, RaisePendingStatusId, RaisePendingAltStatusId),
                 RaisingByName: null,
                 RaisingByJobId: 0,
@@ -525,6 +598,12 @@ public sealed unsafe class AlertEngine : IDisposable
                 }
             }
 
+            var isDead = m.CurrentHP == 0;
+            var isRaisable = isDead
+                             && m.GameObject != null
+                             && m.GameObject.IsTargetable
+                             && MathF.Abs(pos.Y - localPlayer.Position.Y) < 20f;
+
             partyScratch.Add(new PartyMemberState(
                 EntityId: m.EntityId,
                 GameObjectId: goId,
@@ -537,7 +616,8 @@ public sealed unsafe class AlertEngine : IDisposable
                 ShieldPercentage: bc?.ShieldPercentage ?? 0,
                 Position: pos,
                 IsLocalPlayer: m.EntityId == selfId,
-                IsDead: m.CurrentHP == 0,
+                IsDead: isDead,
+                IsRaisable: isRaisable,
                 HasPendingRaise: HasStatus(statuses, RaisePendingStatusId, RaisePendingAltStatusId),
                 RaisingByName: raiserName,
                 RaisingByJobId: raiserJob,

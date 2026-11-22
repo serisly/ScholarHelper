@@ -22,6 +22,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly HotbarGlowHook hotbarGlowHook;
     private readonly AlertBannerOverlay bannerOverlay;
     private readonly PartyListRaiseOverlay partyListRaiseOverlay;
+    private readonly InventoryFoodGlowOverlay inventoryFoodGlowOverlay;
     private readonly SettingsWindow settingsWindow;
     private readonly IReadOnlyList<IHelperModule> modules;
 
@@ -99,6 +100,7 @@ public sealed class Plugin : IDalamudPlugin
 
         bannerOverlay = new AlertBannerOverlay(pluginInterface, textureProvider, alertEngine, Configuration);
         partyListRaiseOverlay = new PartyListRaiseOverlay(gameGui, alertEngine, Configuration);
+        inventoryFoodGlowOverlay = new InventoryFoodGlowOverlay(gameGui, alertEngine, Configuration);
         settingsWindow = new SettingsWindow(
             pluginInterface,
             Configuration,
@@ -127,6 +129,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         windowSystem.Draw();
         partyListRaiseOverlay.Draw();
+        inventoryFoodGlowOverlay.Draw();
         foreach (var module in modules)
         {
             module.DrawOverlay();

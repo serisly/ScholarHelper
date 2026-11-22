@@ -42,19 +42,25 @@ public sealed record AlertEvaluation(
     bool IsActive,
     IReadOnlyList<HotbarGlowTarget>? Glows = null,
     IReadOnlyList<AlertBannerLine>? Banners = null,
-    string? EdgeKey = null)
+    string? EdgeKey = null,
+    bool SuppressSound = false,
+    bool GlowMeals = false)
 {
     public static readonly AlertEvaluation Inactive = new(false);
 
     public static AlertEvaluation Active(
         HotbarGlowTarget? glow = null,
         AlertBannerLine? banner = null,
-        string? edgeKey = null)
+        string? edgeKey = null,
+        bool suppressSound = false,
+        bool glowMeals = false)
         => new(
             true,
             glow.HasValue ? [glow.Value] : null,
             banner != null ? [banner] : null,
-            edgeKey);
+            edgeKey,
+            suppressSound,
+            glowMeals);
 }
 
 [Serializable]
@@ -113,6 +119,7 @@ public readonly record struct PartyMemberState(
     Vector3 Position,
     bool IsLocalPlayer,
     bool IsDead,
+    bool IsRaisable,
     bool HasPendingRaise,
     string? RaisingByName,
     uint RaisingByJobId,
@@ -147,6 +154,7 @@ public sealed unsafe class FrameState
     public bool HasFocusTarget { get; init; }
     public bool HasFoodBuff { get; init; }
     public float FoodRemainingMinutes { get; init; }
+    public int LowestGearConditionPercent { get; init; } = 100;
 
     public byte AetherflowStacks { get; init; }
     public byte FairyGauge { get; init; }

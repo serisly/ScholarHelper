@@ -30,6 +30,7 @@ public static class ScholarAlertRules
     public const uint ConcitationActionId = 37013;
     public const uint EsunaActionId = 7568;
     public const uint HeelPetActionId = 2;
+    public const uint RepairGeneralActionId = 6;
 
     public const uint RaiseWhmActionId = 125;
     public const uint ResurrectionActionId = 173;
@@ -56,6 +57,7 @@ public static class ScholarAlertRules
         new EsunaRule(),
         new FocusTargetRule(),
         new RaidFoodRule(),
+        new GearDurabilityRule(),
 
         new BioDotRule(),
         new LucidDreamingRule(),
@@ -101,7 +103,7 @@ public static class ScholarAlertRules
     {
         public override string Id => RaiseTrackerRuleId;
         public override string DisplayName => "Raise Tracker";
-        public override string Tooltip => "Shows dead party members, who is raising them, and pending raises.";
+        public override string Tooltip => "Tracks dead party members, co-healer raises, and pending raises. Glow and sound fire only when someone is dead and ready to be raised.";
         public override AlertCategory Category => AlertCategory.Party;
         public override byte MinLevel => 12;
         public override bool ScholarOnly => false;
@@ -127,17 +129,16 @@ public static class ScholarAlertRules
             }
 
             List<AlertBannerLine>? banners = null;
-            var hasUncoveredDead = false;
-            var edgeKey = string.Empty;
+            var hasReadyUncoveredDead = false;
+            var deadEdgeKey = string.Empty;
 
             foreach (var m in state.Party)
             {
                 if (!m.IsDead || m.IsLocalPlayer) continue;
-                banners ??= new List<AlertBannerLine>(4);
 
                 if (m.RaisingByName != null)
                 {
-                    edgeKey += $"R:{m.EntityId}:{m.RaisingByName};";
+                    banners ??= new List<AlertBannerLine>(4);
                     banners.Add(new AlertBannerLine(Id, 12, ColorMint,
                     [
                         BannerSegment.Job(m.RaisingByJobId),
@@ -149,7 +150,7 @@ public static class ScholarAlertRules
                 }
                 else if (m.HasPendingRaise)
                 {
-                    edgeKey += $"P:{m.EntityId};";
+                    banners ??= new List<AlertBannerLine>(4);
                     banners.Add(new AlertBannerLine(Id, 14, ColorGold,
                     [
                         BannerSegment.Job(m.ClassJobId),
@@ -157,15 +158,16 @@ public static class ScholarAlertRules
                         BannerSegment.Plain(": Raise pending", ColorGold),
                     ]));
                 }
-                else
+                else if (m.IsRaisable)
                 {
-                    hasUncoveredDead = true;
-                    edgeKey += $"D:{m.EntityId};";
+                    hasReadyUncoveredDead = true;
+                    deadEdgeKey += $"D:{m.EntityId};";
+                    banners ??= new List<AlertBannerLine>(4);
                     banners.Add(new AlertBannerLine(Id, 10, ColorCoral,
                     [
                         BannerSegment.Job(m.ClassJobId),
                         BannerSegment.Plain(m.Name, ColorWhite),
-                        BannerSegment.Plain(": DEAD (needs Raise)", ColorCoral),
+                        BannerSegment.Plain(" is dead", ColorCoral),
                     ]));
                 }
             }
@@ -173,13 +175,18 @@ public static class ScholarAlertRules
             if (banners == null) return AlertEvaluation.Inactive;
 
             HotbarGlowTarget[]? glows = null;
-            if (hasUncoveredDead)
+            if (hasReadyUncoveredDead)
             {
                 var raiseId = GetRaiseActionForJob(state.ClassJobId);
                 if (raiseId != 0) glows = [new HotbarGlowTarget(ActionType.Action, raiseId)];
             }
 
-            return new AlertEvaluation(true, glows, banners, edgeKey);
+            return new AlertEvaluation(
+                true,
+                glows,
+                banners,
+                hasReadyUncoveredDead ? deadEdgeKey : null,
+                SuppressSound: !hasReadyUncoveredDead);
         }
     }
 
@@ -293,7 +300,7 @@ public static class ScholarAlertRules
         public override string Tooltip => "Off cooldown in combat with injured party members (Lv20+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 20;
-        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Sound;
+        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
@@ -337,7 +344,9 @@ public static class ScholarAlertRules
 
             if (injured < minInjured) return AlertEvaluation.Inactive;
 
-            return AlertEvaluation.Active(new HotbarGlowTarget(ActionType.Action, WhisperingDawnActionId));
+            return AlertEvaluation.Active(
+                new HotbarGlowTarget(ActionType.Action, WhisperingDawnActionId),
+                new AlertBannerLine(Id, 35, ColorMint, [BannerSegment.Plain($"Whispering Dawn ready ({injured} <= {hpPct}%)", ColorMint)]));
         }
     }
 
@@ -370,15 +379,15 @@ public static class ScholarAlertRules
     {
         public override string Id => "raid_food";
         public override string DisplayName => "Raid Food";
-        public override string Tooltip => "Pre-pull check in duties when Well Fed is missing or expiring soon.";
+        public override string Tooltip => "Pre-pull check in duties when Well Fed is missing or expiring. Glow highlights meals on hotbars and in open bags.";
         public override AlertCategory Category => AlertCategory.Reminders;
         public override byte MinLevel => 1;
         public override bool ScholarOnly => false;
-        public override AlertCapabilities Capabilities => AlertCapabilities.Banner | AlertCapabilities.Sound;
+        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
-            Enabled = true, EnableGlow = false, EnableBanner = true, SoundId = 1, Threshold = 5,
+            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = 1, Threshold = 5,
         };
 
         public override bool DrawOptions(AlertRuleConfig cfg)
@@ -401,7 +410,51 @@ public static class ScholarAlertRules
             var text = !state.HasFoodBuff
                 ? "Raid food missing"
                 : $"Raid food expiring ({Math.Max(1, (int)MathF.Ceiling(state.FoodRemainingMinutes))}m)";
-            return AlertEvaluation.Active(banner: new AlertBannerLine(Id, 65, ColorAmber, [BannerSegment.Plain(text, ColorAmber)]));
+            return AlertEvaluation.Active(
+                banner: new AlertBannerLine(Id, 65, ColorAmber, [BannerSegment.Plain(text, ColorAmber)]),
+                glowMeals: true);
+        }
+    }
+
+    private sealed class GearDurabilityRule : AlertRule
+    {
+        public override string Id => "gear_durability";
+        public override string DisplayName => "Repair Gear";
+        public override string Tooltip => "Reminds you out of combat when equipped gear drops below the durability threshold.";
+        public override AlertCategory Category => AlertCategory.Reminders;
+        public override byte MinLevel => 1;
+        public override bool ScholarOnly => false;
+        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
+
+        public override AlertRuleConfig CreateDefaultConfig() => new()
+        {
+            Enabled = true, EnableGlow = true, EnableBanner = true, SoundId = 1, Threshold = 20,
+        };
+
+        public override bool DrawOptions(AlertRuleConfig cfg)
+        {
+            var pct = cfg.Threshold;
+            if (UiControls.SliderIntOption("##dur", "Below", ref pct, 5, 99, $"{pct}%", step: 5))
+            {
+                cfg.Threshold = pct;
+                return true;
+            }
+            return false;
+        }
+
+        public override AlertEvaluation Evaluate(FrameState state, AlertRuleConfig cfg)
+        {
+            if (state.InCombat || state.IsPetSuppressed) return AlertEvaluation.Inactive;
+            var threshold = Math.Clamp(cfg.Threshold, 5, 99);
+            if (state.LowestGearConditionPercent >= threshold) return AlertEvaluation.Inactive;
+
+            var broken = state.LowestGearConditionPercent == 0;
+            var color = broken ? ColorCoral : ColorAmber;
+            var text = broken ? "Gear broken (0%)" : $"Repair gear ({state.LowestGearConditionPercent}%)";
+
+            return AlertEvaluation.Active(
+                new HotbarGlowTarget(ActionType.GeneralAction, RepairGeneralActionId),
+                new AlertBannerLine(Id, broken ? 18 : 66, color, [BannerSegment.Plain(text, color)]));
         }
     }
 
@@ -413,7 +466,7 @@ public static class ScholarAlertRules
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 14;
         public override bool AllowAllJobsOption => true;
-        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Sound;
+        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
@@ -445,7 +498,9 @@ public static class ScholarAlertRules
             if (state.CurrentMp >= (uint)Math.Clamp(cfg.Threshold, 1000, 9900) || !state.IsOffCooldown(LucidDreamingActionId))
                 return AlertEvaluation.Inactive;
 
-            return AlertEvaluation.Active(new HotbarGlowTarget(ActionType.Action, LucidDreamingActionId));
+            return AlertEvaluation.Active(
+                new HotbarGlowTarget(ActionType.Action, LucidDreamingActionId),
+                new AlertBannerLine(Id, 40, ColorCyan, [BannerSegment.Plain($"Lucid Dreaming ({state.CurrentMp} MP)", ColorCyan)]));
         }
     }
 
@@ -456,7 +511,7 @@ public static class ScholarAlertRules
         public override string Tooltip => "Own DoT missing or expiring on your hostile target in combat (Lv2/26/72+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 2;
-        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Sound;
+        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
@@ -483,7 +538,8 @@ public static class ScholarAlertRules
             if (state.Level >= 26) glows.Add(new(ActionType.Action, Bio2ActionId));
             if (state.Level >= 72) glows.Add(new(ActionType.Action, BiolysisActionId));
 
-            return new AlertEvaluation(true, glows);
+            var text = state.OwnBioRemainingSeconds <= 0.05f ? "Bio missing" : $"Refresh Bio ({state.OwnBioRemainingSeconds:F1}s)";
+            return new AlertEvaluation(true, glows, [new AlertBannerLine(Id, 50, ColorGold, [BannerSegment.Plain(text, ColorGold)])]);
         }
     }
 
@@ -494,7 +550,7 @@ public static class ScholarAlertRules
         public override string Tooltip => "Off cooldown in combat (Lv45+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 45;
-        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Sound;
+        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
@@ -513,7 +569,10 @@ public static class ScholarAlertRules
             if (!state.InCombat || !state.IsOffCooldown(AetherflowActionId)) return AlertEvaluation.Inactive;
             if (cfg.Flag && state.AetherflowStacks > 0) return AlertEvaluation.Inactive;
 
-            return AlertEvaluation.Active(new HotbarGlowTarget(ActionType.Action, AetherflowActionId));
+            var msg = state.AetherflowStacks == 0 ? "Aetherflow ready" : $"Aetherflow ready ({state.AetherflowStacks} stacks left)";
+            return AlertEvaluation.Active(
+                new HotbarGlowTarget(ActionType.Action, AetherflowActionId),
+                new AlertBannerLine(Id, 42, ColorGold, [BannerSegment.Plain(msg, ColorGold)]));
         }
     }
 
@@ -524,7 +583,7 @@ public static class ScholarAlertRules
         public override string Tooltip => "Catalyze crit shield active while Deployment Tactics is ready (Lv56+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 56;
-        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Sound;
+        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
@@ -541,7 +600,14 @@ public static class ScholarAlertRules
                 {
                     return AlertEvaluation.Active(
                         new HotbarGlowTarget(ActionType.Action, DeploymentTacticsActionId),
-                        edgeKey: $"C:{m.EntityId}");
+                        new AlertBannerLine(Id, 30, ColorGold,
+                        [
+                            BannerSegment.Plain("Critlo on ", ColorGold),
+                            BannerSegment.Job(m.ClassJobId),
+                            BannerSegment.Plain(m.Name, ColorWhite),
+                            BannerSegment.Plain(" (Deploy ready)", ColorGold),
+                        ]),
+                        $"C:{m.EntityId}");
                 }
             }
 
@@ -556,7 +622,7 @@ public static class ScholarAlertRules
         public override string Tooltip => "Off cooldown in combat (Lv66+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 66;
-        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Sound;
+        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
@@ -566,7 +632,9 @@ public static class ScholarAlertRules
         public override AlertEvaluation Evaluate(FrameState state, AlertRuleConfig cfg)
         {
             if (!state.InCombat || !state.IsOffCooldown(ChainStratagemActionId)) return AlertEvaluation.Inactive;
-            return AlertEvaluation.Active(new HotbarGlowTarget(ActionType.Action, ChainStratagemActionId));
+            return AlertEvaluation.Active(
+                new HotbarGlowTarget(ActionType.Action, ChainStratagemActionId),
+                new AlertBannerLine(Id, 45, ColorGold, [BannerSegment.Plain("Chain Stratagem ready", ColorGold)]));
         }
     }
 
@@ -577,7 +645,7 @@ public static class ScholarAlertRules
         public override string Tooltip => "Fey Gauge reaches threshold in combat (Lv70+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 70;
-        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Sound;
+        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
@@ -600,7 +668,9 @@ public static class ScholarAlertRules
             if (!state.InCombat || !state.HasActivePet || state.IsDissipated) return AlertEvaluation.Inactive;
             if (state.FairyGauge < Math.Clamp(cfg.Threshold, 50, 100)) return AlertEvaluation.Inactive;
 
-            return AlertEvaluation.Active(new HotbarGlowTarget(ActionType.Action, AetherpactActionId));
+            return AlertEvaluation.Active(
+                new HotbarGlowTarget(ActionType.Action, AetherpactActionId),
+                new AlertBannerLine(Id, 55, ColorGold, [BannerSegment.Plain($"Fey Gauge at {state.FairyGauge}", ColorGold)]));
         }
     }
 
@@ -611,7 +681,7 @@ public static class ScholarAlertRules
         public override string Tooltip => "Off cooldown in combat (Lv74+).";
         public override AlertCategory Category => AlertCategory.Cooldowns;
         public override byte MinLevel => 74;
-        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Sound;
+        public override AlertCapabilities Capabilities => AlertCapabilities.Glow | AlertCapabilities.Banner | AlertCapabilities.Sound;
 
         public override AlertRuleConfig CreateDefaultConfig() => new()
         {
@@ -621,7 +691,9 @@ public static class ScholarAlertRules
         public override AlertEvaluation Evaluate(FrameState state, AlertRuleConfig cfg)
         {
             if (!state.InCombat || !state.IsOffCooldown(RecitationActionId)) return AlertEvaluation.Inactive;
-            return AlertEvaluation.Active(new HotbarGlowTarget(ActionType.Action, RecitationActionId));
+            return AlertEvaluation.Active(
+                new HotbarGlowTarget(ActionType.Action, RecitationActionId),
+                new AlertBannerLine(Id, 46, ColorGold, [BannerSegment.Plain("Recitation ready", ColorGold)]));
         }
     }
 

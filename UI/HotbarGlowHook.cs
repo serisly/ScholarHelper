@@ -54,6 +54,13 @@ public sealed unsafe class HotbarGlowHook : IDisposable
             return original;
         }
 
+        if (actionType == ActionType.Item
+            && alertEngine.IsFoodGlowActive
+            && alertEngine.IsMealItem(actionId))
+        {
+            return 1;
+        }
+
         return alertEngine.IsHighlighted(actionType, actionId) ? (byte)1 : (byte)0;
     }
 
