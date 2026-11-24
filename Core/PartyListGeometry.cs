@@ -147,11 +147,22 @@ public static unsafe class PartyListGeometry
 
     public static bool TryMatchMember(IReadOnlyList<PartyMemberState> party, PartyRowBounds row, out PartyMemberState matched)
     {
-        if (!string.IsNullOrEmpty(row.DisplayName))
+        var clean = CleanDisplayName(row.DisplayName);
+        if (!string.IsNullOrEmpty(clean))
         {
             foreach (var m in party)
             {
-                if (string.Equals(m.Name, row.DisplayName, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(m.Name, clean, StringComparison.OrdinalIgnoreCase))
+                {
+                    matched = m;
+                    return true;
+                }
+            }
+
+            foreach (var m in party)
+            {
+                if (m.Name.StartsWith(clean, StringComparison.OrdinalIgnoreCase)
+                    || clean.EndsWith(m.Name, StringComparison.OrdinalIgnoreCase))
                 {
                     matched = m;
                     return true;
@@ -167,6 +178,23 @@ public static unsafe class PartyListGeometry
 
         matched = default;
         return false;
+    }
+
+    private static string CleanDisplayName(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
+
+        var s = raw.Trim();
+        if (s.StartsWith("Lv", StringComparison.OrdinalIgnoreCase))
+        {
+            var idx = 2;
+            while (idx < s.Length && char.IsDigit(s[idx])) idx++;
+            while (idx < s.Length && char.IsWhiteSpace(s[idx])) idx++;
+            s = s[idx..];
+        }
+
+        s = s.TrimEnd('.', '\u2026', ' ');
+        return s;
     }
 
     public static float DrawRowPill(ImDrawListPtr draw, float x, float centerY, string text, uint bgColor, uint accentColor)

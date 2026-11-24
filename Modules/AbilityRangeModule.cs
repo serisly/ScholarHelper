@@ -141,10 +141,21 @@ public sealed unsafe class AbilityRangeModule : IHelperModule
         var state = alertEngine.State;
         if (!state.IsLoggedIn || !state.IsScholar || state.Party.Count == 0) return;
 
+        if (ImGui.IsMouseDown(ImGuiMouseButton.Right)) return;
+
         var detailPtr = gameGui.GetAddonByName("ActionDetail", 1);
         if (detailPtr == nint.Zero) return;
         var detailAddon = (AtkUnitBase*)detailPtr.Address;
-        if (detailAddon == null || !detailAddon->IsVisible || detailAddon->RootNode == null || !detailAddon->RootNode->IsVisible()) return;
+        if (detailAddon == null
+            || !detailAddon->IsVisible
+            || !detailAddon->IsReady
+            || detailAddon->Alpha == 0
+            || detailAddon->RootNode == null
+            || !detailAddon->RootNode->IsVisible()
+            || detailAddon->RootNode->Alpha_2 == 0)
+        {
+            return;
+        }
 
         var hovered = gameGui.HoveredAction;
         if (hovered.DetailKind != DetailKind.Action) return;

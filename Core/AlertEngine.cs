@@ -616,7 +616,7 @@ public sealed unsafe class AlertEngine : IDisposable
                 }
             }
 
-            var isDead = m.CurrentHP == 0;
+            var isDead = m.MaxHP > 0 && m.CurrentHP == 0;
             var isRaisable = isDead
                              && m.GameObject != null
                              && m.GameObject.IsTargetable
